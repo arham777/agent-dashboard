@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-
-import { Bot } from 'lucide-react'; // Using a generic Bot icon for placeholder
+import robot from '../../../assets/icons/robot.png';
 import LabeledInput from '../ui/InputFields/ LabeledInput';
 import ToggleSwitch from '../ui/ToggleSwitch';
 
@@ -61,7 +60,7 @@ const FinancialInsightsAIAgent = () => {
 
         {/* Right Panel */}
         <div className=" md:w-3/5 lg:w-2/3 flex flex-col items-center justify-center text-center p-4 bg-gray-50 rounded-xl shadow-md">
-          <Bot size={64} className="text-blue-600 mb-6" />
+          <img src={robot} alt="robot" className="w-1/6 h-1/6 mb-6" />
           <h3 className="text-2xl font-semibold text-gray-800 mb-3">
             Welcome to Financial Insights Assistant
           </h3>
