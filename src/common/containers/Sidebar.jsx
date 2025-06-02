@@ -11,6 +11,7 @@ import {
   CalendarDays,
   Calendar,
   Mails,
+  DollarSign,
 } from "lucide-react";
 import GritLogo from "../../assets/logo/grit_logo.svg";
 
@@ -51,6 +52,7 @@ const Sidebar = ({ toggleSidebar, expanded }) => {
     { icon: Home, label: "Dashboard", to: "/" },
     { icon: FileText, label: "Content Creation", to: "/content" },
     { icon: Mails, label: "Email Generator", to: "/email-generator" },
+    { icon: DollarSign, label: "Financial Generator", to: "/financial-generator" },
     { icon: UserCog, label: "HR Agent", to: "/hr-agent" },
     { icon: Megaphone, label: "Marketing AI Agent", to: "/marketing" },
     { icon: CalendarCheck2, label: "Grant Writer", to: "/grants" },

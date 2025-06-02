@@ -3,6 +3,7 @@ import React from "react";
 const Home = React.lazy(() => import("../Pages/Home"));
 const ContentCreation = React.lazy(() => import("../Pages/ContentCreation"));
 const EmailGeneration = React.lazy(() => import("../Pages/EmailGeneration"));
+const FinancialGenerator = React.lazy(() => import("../Pages/FinancialGenerator"));
 const Auth = React.lazy(() => import("../Pages/Auth/index"));
 
 // const ContactUs = React.lazy(() => import('../pages/Contact'));
@@ -20,6 +21,7 @@ const Auth = React.lazy(() => import("../Pages/Auth/index"));
 export const R_Home = "/";
 export const R_Content_Creation = "/content";
 export const R_Email_Generation = "/email-generator";
+export const R_Financial_Generator = "/financial-generator";
 export const R_auth = "/auth/:id";
 
 // export const R_Contact_Us = '/contact-us';
@@ -42,25 +44,43 @@ export const PublicRoutes = [
     path: R_auth,
     component: Auth,
   },
-];
-
-export const PrivateRoutes = [
-  {
-    key: "home",
-    title: "Home Page",
-    path: R_Home,
-    component: Home,
-  },
-  {
-    key: "content_creation",
-    title: "Content Creation Page",
-    path: R_Content_Creation,
-    component: ContentCreation,
-  },
   {
     key: "email_generation",
     title: "Email Generation Page",
     path: R_Email_Generation,
     component: EmailGeneration,
   },
+  {
+    key: "financial_generator",
+    title: "Financial Generator Page",
+    path: R_Financial_Generator,
+    component: FinancialGenerator,
+  },
+  {
+    key: "home",
+    title: "Home Page",
+    path: R_Home,
+    component: Home,
+  },
+];
+
+export const PrivateRoutes = [
+  // {
+  //   key: "home",
+  //   title: "Home Page",
+  //   path: R_Home,
+  //   component: Home,
+  // },
+  {
+    key: "content_creation",
+    title: "Content Creation Page",
+    path: R_Content_Creation,
+    component: ContentCreation,
+  },
+  // {
+  //   key: "email_generation",
+  //   title: "Email Generation Page",
+  //   path: R_Email_Generation,
+  //   component: EmailGeneration,
+  // },
 ];
