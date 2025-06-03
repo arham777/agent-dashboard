@@ -13,6 +13,7 @@ export default function EmailGenerationAI() {
   const [contentFocus, setContentFocus] = useState("");
   const [toneAndStyle, setToneAndStyle] = useState("");
   const [numEmails, setNumEmails] = useState("3"); // Changed to string to handle empty input
+  const [newlyGeneratedCampaign, setNewlyGeneratedCampaign] = useState(null);
 
   const contentFocusOptions = [
     "Complete campaign sequence",
@@ -26,17 +27,25 @@ export default function EmailGenerationAI() {
   const fetchPosts = useCallback(async () => {
     setLoading(true);
     try {
+      // Attempt to get user_id from localStorage as before for fetchPosts
       const storedUser = localStorage.getItem("authenticatedUser");
-      const userId = storedUser
-        ? JSON.parse(storedUser).userId ||
-          JSON.parse(storedUser).data?.staffid?.toString()
-        : null;
-      if (!userId) {
-        toast.error("User ID not found. Please log in again.");
-        return;
+      let userIdForFetch = null;
+      if (storedUser) {
+        try {
+            const parsedUser = JSON.parse(storedUser);
+            userIdForFetch = parsedUser.userId || parsedUser.data?.staffid?.toString();
+        } catch (e) {
+            console.error("Failed to parse stored user for fetchPosts:", e);
+        }
+      }
+      if (!userIdForFetch) {
+        // Fallback or error if needed for fetchPosts, using a default if not critical
+        console.warn("User ID not found for fetchPosts, using default or proceeding without.");
+        // If fetchPosts absolutely needs a user_id and none is found, you might want to toast.error or return.
+        // For now, let it try to fetch if the endpoint supports it or if it's not critical.
       }
       const res = await fetch(
-        `http://10.229.220.15:8000/get-user-posts?user_id=${userId}`
+        `http://10.229.220.15:8000/get-user-posts${userIdForFetch ? `?user_id=${userIdForFetch}` : ''}`
       );
       if (!res.ok) throw new Error("Failed to fetch posts");
       const data = await res.json();
@@ -49,8 +58,11 @@ export default function EmailGenerationAI() {
     }
   }, []);
 
+  useEffect(() => {
+    fetchPosts();
+  }, [fetchPosts]);
+
   const handleSubmit = async () => {
-    // Validate required fields
     if (!companyName || !companyObjective || !targetAudience || !contentFocus || !toneAndStyle) {
       toast.error("Please fill in all required fields");
       return;
@@ -64,17 +76,16 @@ export default function EmailGenerationAI() {
     } else if (lowerCaseContentFocus === "single mail") {
       apiContentFocus = "single_email";
     } else if (lowerCaseContentFocus === "newsletter" || lowerCaseContentFocus === "promotional email") {
-      toast.error(`"${contentFocus}" is not a supported content focus for campaign generation. Please select "Complete campaign sequence" or "Single mail".`);
-      return; 
+      toast.error(`"${contentFocus}" is not a supported content focus. Please select "Complete campaign sequence" or "Single mail".`);
+      return;
     } else {
-      // Should not happen if contentFocus is from dropdown and validated
       toast.error("Invalid content focus selected. Please try again.");
       return;
     }
 
     if (contentFocus === "Complete campaign sequence") {
       const emailCount = parseInt(numEmails);
-      if (!emailCount || emailCount < 2) {
+      if (isNaN(emailCount) || emailCount < 2) {
         toast.error("Please enter at least 2 emails for campaign sequence");
         return;
       }
@@ -86,7 +97,11 @@ export default function EmailGenerationAI() {
 
     setSubmitting(true);
     try {
+      // Default user_id as requested, since authentication is not yet connected for this endpoint
+      const userIdForCampaign = 1; 
+
       const payload = {
+        user_id: userIdForCampaign,
         client_name: companyName,
         campaign_objective: companyObjective,
         target_audience: targetAudience,
@@ -95,7 +110,7 @@ export default function EmailGenerationAI() {
         tone_and_style: toneAndStyle.toLowerCase()
       };
 
-      console.log('Sending payload:', payload);
+      console.log('Sending payload to /generate-campaign:', payload);
 
       const response = await fetch('http://10.229.220.15:8000/generate-campaign', {
         method: 'POST',
@@ -105,28 +120,26 @@ export default function EmailGenerationAI() {
         body: JSON.stringify(payload)
       });
       
+      const responseBody = await response.json(); // Always try to parse JSON
+
       if (!response.ok) {
         let errorMessage = `Failed to generate campaign (HTTP ${response.status})`;
-        try {
-          // Try to parse the error response as JSON
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorData.detail || errorData.error || JSON.stringify(errorData) || errorMessage;
-        } catch (jsonError) {
-          // If response is not JSON or .json() fails, try to get plain text
-          console.error('Failed to parse error response as JSON:', jsonError); // Log the JSON parsing error
-          try {
-            const errorText = await response.text();
-            if (errorText) errorMessage = errorText;
-          } catch (textError) {
-            // Fallback if .text() also fails
-             console.error('Failed to parse error response text:', textError);
-          }
+        // Log the raw response body for 422 or other errors for better debugging
+        console.error('Error response body:', responseBody);
+        // Try to extract a more specific message from known fields
+        errorMessage = responseBody.detail || responseBody.message || responseBody.error || JSON.stringify(responseBody) || errorMessage;
+        if (response.status === 422 && typeof responseBody.detail === 'string') {
+          // If detail is a string from 422, use it directly
+           errorMessage = responseBody.detail;
+        } else if (response.status === 422 && Array.isArray(responseBody.detail)) {
+          // If detail is an array (FastAPI validation errors), format it
+          errorMessage = responseBody.detail.map(err => `${err.loc.join('.')} - ${err.msg}`).join("; ");
         }
         throw new Error(errorMessage);
       }
 
-      const generatedCampaignData = await response.json(); 
-      console.log("Successfully generated campaign data:", generatedCampaignData);
+      console.log("Successfully generated campaign data:", responseBody);
+      setNewlyGeneratedCampaign(responseBody);
       toast.success("Campaign generated successfully!");
       fetchPosts();
     } catch (error) {
@@ -136,10 +149,6 @@ export default function EmailGenerationAI() {
       setSubmitting(false);
     }
   };
-
-  useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
 
   return (
     <div className="overflow-y-auto flex flex-col px-6 text-[#475569]">
@@ -221,6 +230,7 @@ export default function EmailGenerationAI() {
             postData={postData}
             loading={loading}
             onPostCreated={fetchPosts}
+            newlyGeneratedCampaign={newlyGeneratedCampaign}
           />
         </div>
       </div>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import instagram from "../../../assets/icons/instagram.svg";
 import twitter from "../../../assets/icons/twitter.svg";
 import facebook from "../../../assets/icons/facebook.svg";
@@ -14,16 +14,17 @@ export default function CalendarResult({
   postData = [],
   loading,
   onPostCreated,
+  newlyGeneratedCampaign,
 }) {
   const [viewMode, setViewMode] = React.useState("calendar");
   const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false);
   const [isEmailDetailsModalOpen, setIsEmailDetailsModalOpen] = useState(false);
-  const [selectedEmailData, setSelectedEmailData] = useState([]);
+  const [selectedEmailData, setSelectedEmailData] = useState(null);
+  const [processedPosts, setProcessedPosts] = useState([]);
 
   const daysOfWeek = ["Sun", "Mon", "Tues", "Wed", "Thurs", "Fri", "Sat"];
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDayPosts, setSelectedDayPosts] = useState([]);
-  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedDateForModal, setSelectedDateForModal] = useState(null);
 
   const location = useLocation();
   const isEmailGenerator = location.pathname === "/email-generator";
@@ -74,6 +75,68 @@ export default function CalendarResult({
   };
   // --- End Dummy Email Event Data ---
 
+  function transformApiEmailToPost(apiEmail, campaignStartDate, emailIndex, campaignObjective, targetAudience) {
+    let postDate;
+    const timingLower = apiEmail.timing?.toLowerCase();
+    const effectiveCampaignStartDate = campaignStartDate || new Date(); 
+
+    if (timingLower && timingLower.startsWith('day ')) {
+      const dayNumber = parseInt(timingLower.replace('day ', ''), 10);
+      if (!isNaN(dayNumber)) {
+        postDate = new Date(effectiveCampaignStartDate);
+        postDate.setDate(effectiveCampaignStartDate.getDate() + dayNumber - 1);
+      } else {
+        postDate = new Date(effectiveCampaignStartDate);
+        postDate.setDate(effectiveCampaignStartDate.getDate() + emailIndex);
+      }
+    } else if (apiEmail.timing) {
+      const parsedDate = new Date(apiEmail.timing);
+      if (!isNaN(parsedDate.getTime())) {
+        postDate = parsedDate;
+      } else {
+        postDate = new Date(effectiveCampaignStartDate);
+        postDate.setDate(effectiveCampaignStartDate.getDate() + emailIndex);
+      }
+    } else {
+      postDate = new Date(effectiveCampaignStartDate);
+      postDate.setDate(effectiveCampaignStartDate.getDate() + emailIndex);
+    }
+
+    return {
+      id: `new-email-${apiEmail.email_number || emailIndex}-${Date.now()}`,
+      post_date: postDate.toISOString(),
+      caption: apiEmail.subject_line || apiEmail.tag || 'Untitled Email',
+      platform: 'Email',
+      type: apiEmail.tag || 'General Email',
+      subject: apiEmail.subject_line || '',
+      body: apiEmail.email_content || '',
+      originalApiData: apiEmail,
+      campaign_objective: campaignObjective,
+      target_audience: targetAudience,
+    };
+  }
+
+  useEffect(() => {
+    let combinedPosts = [...postData];
+    const dummyEmails = isEmailGenerator ? getDummyEmailEvents() : [];
+    const postDataIds = new Set(postData.map(p => p.id));
+    const uniqueDummyEmails = dummyEmails.filter(de => !postDataIds.has(de.id));
+    combinedPosts = [...combinedPosts, ...uniqueDummyEmails];
+
+    if (newlyGeneratedCampaign && newlyGeneratedCampaign.campaign_strategy && newlyGeneratedCampaign.campaign_strategy.emails) {
+      const campaignStartDate = new Date();
+      const { campaign_objective, target_audience } = newlyGeneratedCampaign.campaign_strategy;
+      const transformedNewEmails = newlyGeneratedCampaign.campaign_strategy.emails.map((email, index) => 
+        transformApiEmailToPost(email, campaignStartDate, index, campaign_objective, target_audience)
+      );
+      const newEmailIds = new Set(transformedNewEmails.map(ne => ne.id));
+      combinedPosts = [
+        ...transformedNewEmails,
+        ...combinedPosts.filter(p => !newEmailIds.has(p.id))
+      ];
+    }
+    setProcessedPosts(combinedPosts);
+  }, [postData, newlyGeneratedCampaign, isEmailGenerator]);
 
   const monthYearLabel = currentDate.toLocaleString("default", {
     month: "long",
@@ -92,9 +155,7 @@ export default function CalendarResult({
     setCurrentDate(next);
   };
 
-  const allPostsForCurrentPath = isEmailGenerator
-    ? [...postData, ...getDummyEmailEvents()]
-    : postData;
+  const allPostsForCurrentPath = processedPosts;
 
   const currentMonthPosts = allPostsForCurrentPath.filter((post) => {
     const postDate = new Date(post.post_date);
@@ -108,7 +169,7 @@ export default function CalendarResult({
     const day = new Date(post.post_date).getDate();
     if (!acc[day]) acc[day] = [];
 
-    const platforms = post.platform.split(",").map((p) => p.trim());
+    const platforms = typeof post.platform === 'string' ? post.platform.split(",").map((p) => p.trim()) : ['Email'];
 
     acc[day].push({
       ...post,
@@ -123,14 +184,21 @@ export default function CalendarResult({
 
   const renderCell = (day) => {
     const entries = postMap[day];
-    if (!entries || entries.length === 0) return <div className="h-[80px]"><span></span></div>; // Empty span for empty cells
+    if (!entries || entries.length === 0) return <div className="h-[80px]"><span></span></div>;
 
     return (
-      <div className="rounded-md p-1 space-y-1">
+      <div className="rounded-md p-1 space-y-1 h-[80px] overflow-y-auto">
         {entries.map((entry, idx) => (
           <div
-            key={idx}
-            className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium border border-gray-300 rounded-sm overflow-hidden text-ellipsis whitespace-nowrap bg-white"
+            key={entry.id || idx}
+            onClick={() => {
+              if (entry.platform === 'Email' || (entry.platforms && entry.platforms.includes('Email'))) {
+                setSelectedEmailData(entry);
+                setSelectedDateForModal(new Date(entry.post_date));
+                setIsEmailDetailsModalOpen(true);
+              }
+            }}
+            className={`flex items-center gap-1 px-2 py-1 text-[10px] font-medium border rounded-sm overflow-hidden text-ellipsis whitespace-nowrap cursor-pointer ${entry.platform === 'Email' || (entry.platforms && entry.platforms.includes('Email')) ? 'hover:bg-gray-100' : ''}`}
           >
             {!isEmailGenerator && entry.platforms.map((p, i) => {
               const icon =
@@ -236,57 +304,40 @@ export default function CalendarResult({
               </div>
             ))}
             {[...Array(35)].map((_, i) => {
-              const day = i + 1;
-              const inMonth = day > 0 && day <= new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
-              const hasData = !!postMap[day] && postMap[day].length > 0; 
+              const dayOfMonth = i - new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay() + 1;
+              const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayOfMonth);
+              const inMonth = date.getMonth() === currentDate.getMonth();
+              
+              const entriesForCell = inMonth ? postMap[dayOfMonth] : [];
+              const hasData = entriesForCell && entriesForCell.length > 0;
+
               const cellBorderClass = (() => {
                 if (!inMonth) {
                   return 'border border-[#E2E8F0] bg-gray-50 text-gray-400';
                 }
-                if (hasData) {
-                  if (isEmailGenerator) {
-                    const firstEntryType = postMap[day][0]?.type;
-                    switch (firstEntryType) {
-                      case 'Initial Mail': return 'border-2 border-[#007BFF]';
-                      case 'Follow Up Mail': return 'border-2 border-[#FFA500]';
-                      case 'Confirmation Mail': return 'border-2 border-[#16A34A]';
-                      case 'Notification Mail': return 'border-2 border-[#17A2B8]';
-                      default: return 'border-2 border-[#3B82F6]';
-                    }
-                  } else {
-                    return 'border-2 border-[#3B82F6]';
+                if (hasData && isEmailGenerator) {
+                  const firstEntryType = entriesForCell[0]?.type;
+                  switch (firstEntryType) {
+                    case 'Initial Mail': return 'border-2 border-[#007BFF]';
+                    case 'Follow Up Mail': return 'border-2 border-[#FFA500]';
+                    case 'Confirmation Mail': return 'border-2 border-[#28A745]';
+                    case 'Notification Mail': return 'border-2 border-[#DC3545]';
+                    default: return 'border border-gray-300 bg-white';
                   }
                 }
-                return 'border border-[#E2E8F0]';
+                return 'border border-gray-300 bg-white';
               })();
 
               return (
                 <div
                   key={i}
+                  className={`h-[100px] p-1 text-left align-top ${cellBorderClass}`}
                   onClick={() => {
-                    if (hasData && inMonth) {
-                      const fullDate = new Date(
-                        currentDate.getFullYear(),
-                        currentDate.getMonth(),
-                        day
-                      );
-                      setSelectedDate(fullDate);
-
-                      if (isEmailGenerator) {
-                        setSelectedEmailData(postMap[day]);
-                        setIsEmailDetailsModalOpen(true);
-                      } else {
-                        setSelectedDayPosts(postMap[day]);
-                        setIsAuthModalOpen(true);
-                      }
-                    }
+                    if(inMonth) setSelectedDateForModal(date);
                   }}
-                  className={`min-h-[80px] rounded-lg p-1 text-[12px] text-[#0F172A] cursor-pointer ${cellBorderClass}`}
                 >
-                  <div className="font-medium text-right pr-1 text-xs">
-                    {inMonth ? day : ""}
-                  </div>
-                  {inMonth && renderCell(day)}
+                  <span className={`block text-sm ${inMonth ? 'text-gray-700' : 'text-gray-400'}`}>{inMonth ? dayOfMonth : ''}</span>
+                  {inMonth && renderCell(dayOfMonth)} 
                 </div>
               );
             })}
@@ -331,7 +382,7 @@ export default function CalendarResult({
         </>
       ) : (
         <MonthlyPostResults
-          posts={postData}
+          posts={currentMonthPosts}
           onPostCreated={() => {
             onPostCreated();
           }}
@@ -340,8 +391,8 @@ export default function CalendarResult({
       {isAuthModalOpen && (
         <AuthModal
           onClose={() => setIsAuthModalOpen(false)}
-          scheduledPosts={selectedDayPosts}
-          selectedDate={selectedDate}
+          scheduledPosts={[]}
+          selectedDate={selectedDateForModal}
           onPostCreated={() => {
             setIsAuthModalOpen(false);
             onPostCreated();
@@ -353,8 +404,8 @@ export default function CalendarResult({
         <EmailDetailsModal
           isOpen={isEmailDetailsModalOpen}
           onClose={() => setIsEmailDetailsModalOpen(false)}
-          selectedDate={selectedDate}
-          emailsForDate={selectedEmailData}
+          selectedDate={selectedDateForModal}
+          scheduledEmailsForDate={selectedEmailData ? [selectedEmailData] : []}
         />
       )}
     </div>
