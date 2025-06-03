@@ -12,4 +12,5 @@ const FinancialGenerator = () => {
   );
 };
 
+
 export default FinancialGenerator;
