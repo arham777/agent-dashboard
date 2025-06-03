@@ -6,7 +6,6 @@ const FinancialGenerator = () => {
   return (
     <DashboardLayout>
       <div className="p-6 flex-grow flex h-full">
-        {/* Ensure FinancialInsightsAIAgent can grow to fill space if needed */}
         <FinancialInsightsAIAgent />
       </div>
     </DashboardLayout>

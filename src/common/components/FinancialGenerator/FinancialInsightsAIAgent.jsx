@@ -18,7 +18,7 @@ const FinancialInsightsAIAgent = () => {
       <h2 className="text-xl font-semibold text-gray-800">
         Financial Insights AI Agent
       </h2>
-      <div className="flex h-screen flex-grow gap-6 md:flex-row flex-col">
+      <div className="flex lg:h-[28rem] md:h-[24rem] flex-grow gap-6 md:flex-row flex-col">
         {/* Left Panel */}
         <div className=" md:w-2/5 lg:w-1/3 p-4 bg-gray-50 rounded-xl shadow-md flex flex-col justify-between ">
           <div>
@@ -60,11 +60,11 @@ const FinancialInsightsAIAgent = () => {
 
         {/* Right Panel */}
         <div className=" md:w-3/5 lg:w-2/3 flex flex-col items-center justify-center text-center p-4 bg-gray-50 rounded-xl shadow-md">
-          <img src={robot} alt="robot" className="w-1/6 h-1/6 mb-6" />
+          <img src={robot} alt="robot" className="w-1/6 mb-6" />
           <h3 className="text-2xl font-semibold text-gray-800 mb-3">
             Welcome to Financial Insights Assistant
           </h3>
-          <p className="text-gray-600 max-w-md">
+          <p className="text-gray-600 max-w-lg">
             Whether you're tracking performance, reviewing forecasts, or exploring investment strategies — I'm here to help you make data-driven decisions with confidence. Let's dive into the numbers!
           </p>
         </div>
