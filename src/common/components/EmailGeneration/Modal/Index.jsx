@@ -29,6 +29,14 @@ const CalendarIcon = () => (
   </svg>
 );
 
+// Helper function to format tag labels
+function formatTagLabel(tag) {
+  if (!tag || typeof tag !== 'string') return 'Untyped';
+  return tag
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
 
 export default function MailSchedulerModal({ isOpen, onClose, selectedDate, scheduledEmailsForDate = [] }) {
   const [selectedTab, setSelectedTab] = useState("scheduled"); 
@@ -166,7 +174,7 @@ export default function MailSchedulerModal({ isOpen, onClose, selectedDate, sche
                 {selectedTab === "scheduled" && (
                   <div className="space-y-4 px-2">
                     <span className="inline-block border border-[#007BFF] text-[#007BFF] text-sm font-semibold px-2.5 py-1.5 rounded-full">
-                      <span className="text-md">•</span> {displayScheduledEmail.type}
+                      <span className="text-md">•</span> {formatTagLabel(displayScheduledEmail.type)}
                     </span>
                   <div className="border p-3 rounded-sm border-gray-200">
                     <div>

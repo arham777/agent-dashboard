@@ -33,6 +33,15 @@ const dynamicColorPalette = [
   { color: "text-lime-600", bg: "bg-lime-100", border: "border-lime-600" },
 ];
 
+// Helper function to format tag labels
+function formatTagLabel(tag) {
+  if (!tag || typeof tag !== 'string') return 'Untyped';
+  return tag
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
 export default function CalendarResult({
   postData = [],
   loading,
@@ -160,19 +169,24 @@ export default function CalendarResult({
   const getTagStyle = (type) => {
     if (!type) return { label: 'Untyped', color: "text-gray-700", bg: "bg-gray-100", border: "border-gray-400" };
 
+    // Use formatted label for specific cases as well, to ensure consistency if raw values are accidentally passed
     switch (type) {
       case 'Initial Mail': 
-        return { label: type, color: "text-[#007BFF]", bg: "bg-[#007BFF1A]", border: "border-[#007BFF]" };
+      case 'initial_mail': // Handle raw value if it slips through
+        return { label: "Initial Mail", color: "text-[#007BFF]", bg: "bg-[#007BFF1A]", border: "border-[#007BFF]" };
       case 'Follow Up Mail': 
-        return { label: type, color: "text-[#FFA500]", bg: "bg-[#FFA5001A]", border: "border-[#FFA500]" };
+      case 'follow_up_mail': // Handle raw value
+        return { label: "Follow Up Mail", color: "text-[#FFA500]", bg: "bg-[#FFA5001A]", border: "border-[#FFA500]" };
       case 'Confirmation Mail': 
-        return { label: type, color: "text-[#28A745]", bg: "bg-[#28A7451A]", border: "border-[#28A745]" };
+      case 'confirmation_mail': // Handle raw value
+        return { label: "Confirmation Mail", color: "text-[#28A745]", bg: "bg-[#28A7451A]", border: "border-[#28A745]" };
       case 'Notification Mail': 
-        return { label: type, color: "text-[#DC3545]", bg: "bg-[#DC35451A]", border: "border-[#DC3545]" };
+      case 'notification_mail': // Handle raw value
+        return { label: "Notification Mail", color: "text-[#DC3545]", bg: "bg-[#DC35451A]", border: "border-[#DC3545]" };
       default: {
         const hash = simpleHash(type);
         const selectedStyle = dynamicColorPalette[hash % dynamicColorPalette.length];
-        return { label: type, ...selectedStyle };
+        return { label: formatTagLabel(type), ...selectedStyle };
       }
     }
   };
@@ -226,7 +240,7 @@ export default function CalendarResult({
     if (!entries || entries.length === 0) return <div className="h-[80px]"><span></span></div>;
 
     return (
-      <div className="rounded-md p-1 space-y-1 h-[80px] overflow-y-auto">
+      <div className="rounded-md p-1 space-y-1 h-[80px] overflow-hidden">
         {entries.map((entry, idx) => (
           <div
             key={entry.id || idx}
@@ -237,7 +251,7 @@ export default function CalendarResult({
                 setIsEmailDetailsModalOpen(true);
               }
             }}
-            className={`flex items-center gap-1 px-2 py-1 text-[10px] font-medium border rounded-sm overflow-hidden text-ellipsis whitespace-nowrap cursor-pointer ${entry.platform === 'Email' || (entry.platforms && entry.platforms.includes('Email')) ? 'hover:bg-gray-100' : ''}`}
+            className={`flex items-start gap-1 px-2 py-1 text-[10px] font-medium border rounded-sm overflow-hidden cursor-pointer ${entry.platform === 'Email' || (entry.platforms && entry.platforms.includes('Email')) ? 'hover:bg-gray-100' : ''}`}
           >
             {!isEmailGenerator && entry.platforms.map((p, i) => {
               const icon =
@@ -254,7 +268,7 @@ export default function CalendarResult({
                 icon && <img key={i} src={icon} alt={p} className="w-3 h-3" />
               );
             })}
-            <span className="truncate whitespace-normal">{entry.caption}</span>
+            <span className="line-clamp-2">{entry.caption}</span>
           </div>
         ))}
       </div>
