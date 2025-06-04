@@ -37,7 +37,7 @@ export default function MailSchedulerModal({ isOpen, onClose, selectedDate, sche
     : { 
         type: 'Initial Mail',
         subject: 'Master UI/UX Design — Free Online Workshop This Month!',
-        body: `Hi [First Name],\n\nAre you ready to level up your design skills?\n\nWe’re excited to invite you to our Free Online UI/UX Design Workshop, where you’ll learn the essentials of:\n\n✅ Design thinking\n✅ Wireframing techniques\n✅ Prototyping tools\n✅ Building design systems (Components & Variants in Figma)\n\n📅 Date: [Insert Date]\n⏰ Time: [Insert Time]\n📍 Platform: Zoom (Link after registration)\n\n⭐ Bonus: Participants will receive access to our design template pack!`,
+        body: `Hi [First Name],\n\nAre you ready to level up your design skills?\n\nWe're excited to invite you to our Free Online UI/UX Design Workshop, where you'll learn the essentials of:\n\n✅ Design thinking\n✅ Wireframing techniques\n✅ Prototyping tools\n✅ Building design systems (Components & Variants in Figma)\n\n📅 Date: [Insert Date]\n⏰ Time: [Insert Time]\n📍 Platform: Zoom (Link after registration)\n\n⭐ Bonus: Participants will receive access to our design template pack!`,
         platforms: ['Email'],
         caption: 'Dummy scheduled email caption'
       };
@@ -86,6 +86,18 @@ export default function MailSchedulerModal({ isOpen, onClose, selectedDate, sche
           </div>
         );
       }
+
+      // Handle lines that are entirely bold (e.g., **AI in Action**)
+      if (line.startsWith('**') && line.endsWith('**') && line.length > 4) {
+        const boldContent = line.substring(2, line.length - 2);
+        return (
+          <p key={index} className="text-sm text-gray-700 whitespace-pre-wrap">
+            <strong>{boldContent}</strong>
+          </p>
+        );
+      }
+      
+      // Default rendering for other lines
       return (
         <p key={index} className="text-sm text-gray-700 whitespace-pre-wrap">
           {line}
@@ -181,7 +193,7 @@ export default function MailSchedulerModal({ isOpen, onClose, selectedDate, sche
                 {selectedTab === "compose" && (
                   <div className="space-y-5 px-2">
                     <div>
-                      <label className="block text-gray-700 text-sm font-semibold mb-2">Mail Objective</label>
+                      <label className="block text-gray-700 text-sm font-semibold mb-2">Campaign Objective</label>
                       <select className="mt-1 border  block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
                         <option>Product Promotion</option>
                         <option>Newsletter</option>
@@ -200,15 +212,6 @@ export default function MailSchedulerModal({ isOpen, onClose, selectedDate, sche
                         placeholder="write your audience here"
                         className="mt-1 block w-full p-2 border border-gray-300 rounded-md  focus:ring-blue-500 focus:border-blue-500"
                       />
-                    </div>
-
-                    <div>
-                      <label className="block text-gray-700 text-sm font-semibold mb-2">Content Focus</label>
-                      <select className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 border focus:border-blue-500 sm:text-sm rounded-md">
-                        <option>Complete campaign sequence or single mail</option>
-                        <option>Single Mail</option>
-                        <option>Campaign Sequence</option>
-                      </select>
                     </div>
 
                     <div>
