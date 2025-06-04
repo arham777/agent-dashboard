@@ -1,5 +1,5 @@
 import { Dialog, Transition } from "@headlessui/react";
-import React, { Fragment, useState } from "react";
+import React, { Fragment, useState, useEffect } from "react";
 import { format } from "date-fns";
 const RegenerateIcon = () => (
  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -38,17 +38,112 @@ function formatTagLabel(tag) {
     .join(' ');
 }
 
-export default function MailSchedulerModal({ isOpen, onClose, selectedDate, scheduledEmailsForDate = [] }) {
+export default function MailSchedulerModal({ 
+  isOpen, 
+  onClose, 
+  selectedDate, 
+  scheduledEmailsForDate = [],
+  onEmailRecomposed,
+  userId,
+  clientName
+}) {
   const [selectedTab, setSelectedTab] = useState("scheduled"); 
+  
+  const [campaignObjective, setCampaignObjective] = useState("Product Promotion");
+  const [targetAudience, setTargetAudience] = useState("");
+  const [toneAndStyle, setToneAndStyle] = useState("Professional or friendly");
+  const [isComposing, setIsComposing] = useState(false);
+
   const displayScheduledEmail = scheduledEmailsForDate.length > 0
     ? scheduledEmailsForDate[0]
     : { 
+        id: null,
         type: 'Initial Mail',
         subject: 'Master UI/UX Design — Free Online Workshop This Month!',
         body: `Hi [First Name],\n\nAre you ready to level up your design skills?\n\nWe're excited to invite you to our Free Online UI/UX Design Workshop, where you'll learn the essentials of:\n\n✅ Design thinking\n✅ Wireframing techniques\n✅ Prototyping tools\n✅ Building design systems (Components & Variants in Figma)\n\n📅 Date: [Insert Date]\n⏰ Time: [Insert Time]\n📍 Platform: Zoom (Link after registration)\n\n⭐ Bonus: Participants will receive access to our design template pack!`,
         platforms: ['Email'],
-        caption: 'Dummy scheduled email caption'
+        caption: 'Dummy scheduled email caption',
       };
+
+  useEffect(() => {
+    if (selectedTab === "compose") {
+      if (displayScheduledEmail) {
+        setCampaignObjective(displayScheduledEmail.campaign_objective || "Product Promotion");
+      } else {
+        setCampaignObjective("Product Promotion");
+      }
+      setTargetAudience("");
+    }
+  }, [selectedTab, displayScheduledEmail]);
+
+  const handleComposeSubmit = async () => {
+    if (!displayScheduledEmail || !displayScheduledEmail.id) {
+      console.error("Cannot recompose: Original email ID is missing.");
+      return;
+    }
+    if (!userId) {
+      console.error("User ID is missing. Cannot generate email.");
+      return;
+    }
+
+    setIsComposing(true);
+    
+    console.log("Submitting compose with client_name:", clientName);
+    
+    const payload = {
+      user_id: userId,
+      client_name: clientName,
+      campaign_objective: campaignObjective,
+      target_audience: targetAudience,
+      tone_and_style: toneAndStyle,
+    };
+    
+    console.log("Payload for email generation:", payload);
+
+    try {
+      console.log("Sending request to generate-single-email...");
+      const response = await fetch('http://10.229.220.15:8000/generate-single-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        let errorMessage;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.detail || `HTTP error! status: ${response.status}`;
+        } catch (parseError) {
+          // If JSON parsing fails, use status text
+          errorMessage = `HTTP error! status: ${response.status} ${response.statusText}`;
+          console.log("Error parsing JSON response:", parseError);
+        }
+        throw new Error(errorMessage);
+      }
+
+      console.log("Received successful response from generate-single-email");
+      const newEmailData = await response.json();
+      console.log("Parsed API response:", newEmailData);
+      
+      if (onEmailRecomposed) {
+        console.log("Calling onEmailRecomposed with ID:", displayScheduledEmail.id);
+        onEmailRecomposed(displayScheduledEmail.id, newEmailData);
+      } else {
+        console.error("onEmailRecomposed callback is not available");
+      }
+      
+      console.log("Closing modal after successful email generation");
+      onClose();
+
+    } catch (error) {
+      console.error("Failed to generate email:", error);
+      // You could add a toast notification here if you have a toast library
+    } finally {
+      setIsComposing(false);
+    }
+  };
 
   const renderEmailBodyContent = (body) => {
     if (!body) return <p>No email body content.</p>;
@@ -95,7 +190,6 @@ export default function MailSchedulerModal({ isOpen, onClose, selectedDate, sche
         );
       }
 
-      // Handle lines that are entirely bold (e.g., **AI in Action**)
       if (line.startsWith('**') && line.endsWith('**') && line.length > 4) {
         const boldContent = line.substring(2, line.length - 2);
         return (
@@ -105,7 +199,6 @@ export default function MailSchedulerModal({ isOpen, onClose, selectedDate, sche
         );
       }
       
-      // Default rendering for other lines
       return (
         <p key={index} className="text-sm text-gray-700 whitespace-pre-wrap">
           {line}
@@ -201,8 +294,14 @@ export default function MailSchedulerModal({ isOpen, onClose, selectedDate, sche
                 {selectedTab === "compose" && (
                   <div className="space-y-5 px-2">
                     <div>
-                      <label className="block text-gray-700 text-sm font-semibold mb-2">Campaign Objective</label>
-                      <select className="mt-1 border  block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                      <label htmlFor="campaignObjective" className="block text-gray-700 text-sm font-semibold mb-2">Campaign Objective</label>
+                      <select 
+                        id="campaignObjective"
+                        name="campaignObjective"
+                        value={campaignObjective}
+                        onChange={(e) => setCampaignObjective(e.target.value)}
+                        className="mt-1 border block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                      >
                         <option>Product Promotion</option>
                         <option>Newsletter</option>
                         <option>Event Invitation</option>
@@ -214,17 +313,27 @@ export default function MailSchedulerModal({ isOpen, onClose, selectedDate, sche
                     </div>
 
                     <div>
-                      <label className="block text-gray-700 text-sm font-semibold mb-2">Target Audience</label>
+                      <label htmlFor="targetAudience" className="block text-gray-700 text-sm font-semibold mb-2">Target Audience</label>
                       <input
                         type="text"
-                        placeholder="write your audience here"
-                        className="mt-1 block w-full p-2 border border-gray-300 rounded-md  focus:ring-blue-500 focus:border-blue-500"
+                        id="targetAudience"
+                        name="targetAudience"
+                        placeholder="e.g., Tech enthusiasts, previous customers"
+                        value={targetAudience}
+                        onChange={(e) => setTargetAudience(e.target.value)}
+                        className="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-gray-700 text-sm font-semibold mb-2">Tone and Style</label>
-                      <select className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                      <label htmlFor="toneAndStyle" className="block text-gray-700 text-sm font-semibold mb-2">Tone and Style</label>
+                      <select 
+                        id="toneAndStyle"
+                        name="toneAndStyle"
+                        value={toneAndStyle}
+                        onChange={(e) => setToneAndStyle(e.target.value)}
+                        className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 border focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                      >
                         <option>Professional or friendly</option>
                         <option>Professional</option>
                         <option>Friendly</option>
@@ -233,8 +342,20 @@ export default function MailSchedulerModal({ isOpen, onClose, selectedDate, sche
                       </select>
                     </div>
 
-                      <button className="px-6 w-full py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition duration-200">
-                        Compose
+                      <button 
+                        onClick={handleComposeSubmit}
+                        disabled={isComposing}
+                        className="px-6 w-full py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition duration-200 disabled:opacity-50"
+                      >
+                        {isComposing ? (
+                          <span className="flex items-center justify-center">
+                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Generating Email...
+                          </span>
+                        ) : "Compose"}
                       </button>
                   </div>
                 )}

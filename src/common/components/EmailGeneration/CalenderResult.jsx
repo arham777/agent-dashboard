@@ -42,11 +42,42 @@ function formatTagLabel(tag) {
     .join(' ');
 }
 
+// Helper function to extract client name from various possible locations in the data structure
+function extractClientName(data) {
+  if (!data) return null;
+  
+  // Try direct access at different potential locations
+  if (typeof data.client_name === 'string') return data.client_name;
+  if (typeof data.clientName === 'string') return data.clientName;
+  if (typeof data.client === 'string') return data.client;
+  
+  // Try nested locations
+  if (data.campaign_strategy) {
+    if (typeof data.campaign_strategy.client_name === 'string') return data.campaign_strategy.client_name;
+    if (typeof data.campaign_strategy.clientName === 'string') return data.campaign_strategy.clientName;
+    if (typeof data.campaign_strategy.client === 'string') return data.campaign_strategy.client;
+  }
+
+  // Try metadata or other common locations
+  if (data.metadata && typeof data.metadata.client_name === 'string') return data.metadata.client_name;
+  if (data.metadata && typeof data.metadata.clientName === 'string') return data.metadata.clientName;
+  
+  // If we have an emails array with client info in it
+  if (data.campaign_strategy && Array.isArray(data.campaign_strategy.emails) && data.campaign_strategy.emails.length > 0) {
+    const firstEmail = data.campaign_strategy.emails[0];
+    if (typeof firstEmail.client_name === 'string') return firstEmail.client_name;
+    if (typeof firstEmail.clientName === 'string') return firstEmail.clientName;
+  }
+  
+  return null; // No client name found in any expected location
+}
+
 export default function CalendarResult({
   postData = [],
   loading,
   onPostCreated,
   newlyGeneratedCampaign,
+  companyName = "",
 }) {
   const [viewMode, setViewMode] = React.useState("calendar");
   const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false);
@@ -62,22 +93,34 @@ export default function CalendarResult({
   const location = useLocation();
   const isEmailGenerator = location.pathname === "/email-generator";
 
-  function transformApiEmailToPost(apiEmail, campaignStartDate, emailIndex, campaignObjective, targetAudience) {
+  const userId = 39;
+
+  // Debug log to see the actual structure - this will help identify where client_name is stored
+  useEffect(() => {
+    if (newlyGeneratedCampaign) {
+      console.log("newlyGeneratedCampaign structure:", JSON.stringify(newlyGeneratedCampaign, null, 2));
+    }
+  }, [newlyGeneratedCampaign]);
+
+  // Debug log the companyName prop
+  useEffect(() => {
+    if (companyName) {
+      console.log("CalendarResult received companyName:", companyName);
+    }
+  }, [companyName]);
+
+  function transformApiEmailToPost(apiEmail, campaignStartDate, emailIndex, campaignObjective, targetAudience, clientNameFromCampaign) {
     let postDate;
     const { timing } = apiEmail; // e.g., "Send on June 5, 2025, at 10:00 AM" or "Day 1"
     const effectiveCampaignStartDate = campaignStartDate || new Date(); // Base for "Day X" or ultimate fallback
 
     if (timing) {
-      // Try to parse specific date format like "Send on June 5, 2025, at 10:00 AM"
       const specificDateMatch = timing.match(/^Send on (\w+) (\d{1,2}), (\d{4})/i);
       if (specificDateMatch) {
         const monthName = specificDateMatch[1];
         const day = parseInt(specificDateMatch[2], 10);
         const year = parseInt(specificDateMatch[3], 10);
-
-        // Convert month name to month index (0-11)
         const monthIndex = new Date(Date.parse(monthName + " 1, 2000")).getMonth();
-
         if (!isNaN(day) && !isNaN(year) && !isNaN(monthIndex)) {
           const parsed = new Date(year, monthIndex, day);
           if (!isNaN(parsed.getTime())) {
@@ -85,8 +128,6 @@ export default function CalendarResult({
           }
         }
       }
-
-      // If specific date parsing failed or wasn't applicable (e.g. timing is "Day 1"), try "Day X" format
       if (!postDate) {
         const timingLower = timing.toLowerCase();
         if (timingLower.startsWith('day ')) {
@@ -99,14 +140,10 @@ export default function CalendarResult({
       }
     }
 
-    // Fallback: If postDate is still not set (no timing, or unparsable timing),
-    // use the campaign start date + index.
     if (!postDate) {
       postDate = new Date(effectiveCampaignStartDate);
       postDate.setDate(effectiveCampaignStartDate.getDate() + emailIndex);
     }
-
-    // Normalize to start of day for consistent calendar mapping
     postDate.setHours(0, 0, 0, 0);
 
     return {
@@ -120,25 +157,48 @@ export default function CalendarResult({
       originalApiData: apiEmail,
       campaign_objective: campaignObjective,
       target_audience: targetAudience,
+      // Look for client_name in multiple places
+      client_name: clientNameFromCampaign || companyName || apiEmail.client_name || apiEmail.clientName || 'DefaultClient', // Use companyName as primary fallback
     };
   }
   
   useEffect(() => {
     let combinedPosts = [...postData];
-    let firstCampaignEmailDate = null; // To store the date of the first email in a new campaign
+    let firstCampaignEmailDate = null;
 
     if (newlyGeneratedCampaign && newlyGeneratedCampaign.campaign_strategy && newlyGeneratedCampaign.campaign_strategy.emails) {
-      const campaignStartDateFromEffect = new Date(); // Default start date for fallbacks
+      const campaignStartDateFromEffect = new Date();
+      
+      // Extract campaign data
       const { campaign_objective, target_audience } = newlyGeneratedCampaign.campaign_strategy;
       
+      // Extract client name - prioritize companyName prop over extracted name
+      let clientNameForEmails = companyName;
+      
+      // If companyName prop is empty, try to extract it
+      if (!clientNameForEmails) {
+        const extractedClientName = extractClientName(newlyGeneratedCampaign);
+        console.log("No companyName prop, extracted client name:", extractedClientName);
+        clientNameForEmails = extractedClientName;
+      } else {
+        console.log("Using companyName prop for emails:", clientNameForEmails);
+      }
+      
       const transformedNewEmails = newlyGeneratedCampaign.campaign_strategy.emails.map((email, index) => 
-        transformApiEmailToPost(email, campaignStartDateFromEffect, index, campaign_objective, target_audience)
+        transformApiEmailToPost(
+          email, 
+          campaignStartDateFromEffect, 
+          index, 
+          campaign_objective, 
+          target_audience, 
+          clientNameForEmails
+        )
       );
 
       if (transformedNewEmails.length > 0) {
         const dateOfFirst = new Date(transformedNewEmails[0].post_date);
         if(!isNaN(dateOfFirst.getTime())) {
-            firstCampaignEmailDate = dateOfFirst; // Capture for auto-navigation
+            firstCampaignEmailDate = dateOfFirst;
         }
       }
 
@@ -148,15 +208,23 @@ export default function CalendarResult({
         ...combinedPosts.filter(p => !newEmailIds.has(p.id) && p.platform === 'Email')
       ];
     } else {
+      // If not a new campaign, ensure we only show email posts if on email generator page,
+      // or retain existing logic for other paths if any.
+      // For this example, assuming email generator path shows only emails.
       combinedPosts = combinedPosts.filter(p => p.platform === 'Email');
     }
+    
+    // Debug the first combined post to see if client_name is properly set
+    if (combinedPosts.length > 0) {
+      console.log("First processed post client_name:", combinedPosts[0].client_name);
+    }
+    
     setProcessedPosts(combinedPosts);
 
     if (isEmailGenerator) {
       const types = [...new Set(combinedPosts.map(p => p.type).filter(Boolean))];
       setEmailTypes(types);
 
-      // Auto-navigate calendar to the month of the first email of a new campaign
       if (firstCampaignEmailDate) {
         if (currentDate.getFullYear() !== firstCampaignEmailDate.getFullYear() ||
             currentDate.getMonth() !== firstCampaignEmailDate.getMonth()) {
@@ -164,7 +232,59 @@ export default function CalendarResult({
         }
       }
     }
-  }, [postData, newlyGeneratedCampaign, isEmailGenerator]); // currentDate is intentionally NOT a dependency here
+  }, [postData, newlyGeneratedCampaign, isEmailGenerator]); // currentDate removed as per original logic
+
+  const handleEmailRecomposed = (originalEmailId, newEmailApiData) => {
+    console.log("handleEmailRecomposed called with:", originalEmailId);
+    console.log("New email data:", newEmailApiData);
+    
+    setProcessedPosts(prevPosts => {
+      const postIndex = prevPosts.findIndex(p => p.id === originalEmailId);
+      if (postIndex === -1) {
+        console.warn("Original email not found for recomposition:", originalEmailId);
+        console.log("Available post IDs:", prevPosts.map(p => p.id));
+        return prevPosts;
+      }
+
+      const originalPost = prevPosts[postIndex];
+      console.log("Original post found:", originalPost);
+      
+      // Extract client name from API response or fall back to original
+      const clientNameFromResponse = extractClientName(newEmailApiData) || originalPost.client_name;
+      
+      // Create the recomposed email, keeping original date and ID
+      const recomposedEmail = {
+        ...originalPost,
+        id: originalPost.id,
+        post_date: originalPost.post_date, // Preserve the original date
+        caption: newEmailApiData.subject_line || newEmailApiData.tag || 'Recomposed Email',
+        subject: newEmailApiData.subject_line || '',
+        body: newEmailApiData.email_content || '',
+        type: newEmailApiData.tag || originalPost.type || 'General Email',
+        campaign_objective: newEmailApiData.campaign_objective || originalPost.campaign_objective,
+        target_audience: newEmailApiData.target_audience || originalPost.target_audience,
+        client_name: clientNameFromResponse, 
+        originalApiData: newEmailApiData,
+        // Preserve any timing information from original
+        timing: originalPost.timing,
+      };
+
+      console.log("Recomposed email:", recomposedEmail);
+
+      const updatedPosts = [...prevPosts];
+      updatedPosts[postIndex] = recomposedEmail;
+      console.log("Updated posts array with replacement at index:", postIndex);
+      
+      return updatedPosts;
+    });
+    
+    // Close modal and refresh if needed
+    setIsEmailDetailsModalOpen(false);
+    if(onPostCreated) {
+      console.log("Calling onPostCreated callback for refresh");
+      onPostCreated();
+    }
+  };
 
   const getTagStyle = (type) => {
     if (!type) return { label: 'Untyped', color: "text-gray-700", bg: "bg-gray-100", border: "border-gray-400" };
@@ -275,6 +395,21 @@ export default function CalendarResult({
     );
   };
 
+  // Modify clientNameToPass logic to prioritize companyName prop
+  let clientNameToPass;
+  if (companyName) {
+    // If companyName prop is provided, it takes highest priority
+    clientNameToPass = companyName;
+  } else if (selectedEmailData && selectedEmailData.client_name) {
+    // Otherwise fall back to the existing logic
+    clientNameToPass = selectedEmailData.client_name;
+  } else if (selectedEmailData) {
+    console.warn("client_name not found on selectedEmailData. ID:", selectedEmailData.id);
+    clientNameToPass = "Client"; // More friendly fallback
+  } else {
+    clientNameToPass = "Client";
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-[300px]">
@@ -381,7 +516,15 @@ export default function CalendarResult({
                   key={i}
                   className={`h-[100px] p-1 text-left align-top ${cellBorderClass}`}
                   onClick={() => {
-                    if(inMonth) setSelectedDateForModal(date);
+                    if(inMonth) {
+                      // Logic for opening modal:
+                      // If there are entries, use data from the first entry.
+                      // If no entries, selectedEmailData will be based on a new email template or be null.
+                      const firstEntry = entriesForCell && entriesForCell.length > 0 ? entriesForCell[0] : null;
+                      setSelectedEmailData(firstEntry); // This could be null if cell is empty, modal should handle it
+                      setSelectedDateForModal(date);
+                      setIsEmailDetailsModalOpen(true);
+                    }
                   }}
                 >
                   <span className={`block text-sm ${inMonth ? 'text-gray-700' : 'text-gray-400'}`}>{inMonth ? dayOfMonth : ''}</span>
@@ -410,7 +553,7 @@ export default function CalendarResult({
         <MonthlyPostResults
           posts={currentMonthPosts}
           onPostCreated={() => {
-            onPostCreated();
+            if (onPostCreated) onPostCreated();
           }}
         />
       )}
@@ -421,7 +564,7 @@ export default function CalendarResult({
           selectedDate={selectedDateForModal}
           onPostCreated={() => {
             setIsAuthModalOpen(false);
-            onPostCreated();
+            if (onPostCreated) onPostCreated();
           }}
         />
       )}
@@ -432,6 +575,9 @@ export default function CalendarResult({
           onClose={() => setIsEmailDetailsModalOpen(false)}
           selectedDate={selectedDateForModal}
           scheduledEmailsForDate={selectedEmailData ? [selectedEmailData] : []}
+          userId={userId}
+          clientName={clientNameToPass} // Now more robustly determined with companyName priority
+          onEmailRecomposed={handleEmailRecomposed}
         />
       )}
     </div>

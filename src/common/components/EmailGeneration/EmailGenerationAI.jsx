@@ -248,6 +248,7 @@ export default function EmailGenerationAI() {
             loading={loading}
             onPostCreated={fetchPosts}
             newlyGeneratedCampaign={newlyGeneratedCampaign}
+            companyName={companyName}
           />
         </div>
       </div>
