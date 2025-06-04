@@ -374,12 +374,11 @@ export default function CalendarResult({
       return updatedPosts;
     });
     
-    // Close modal and refresh if needed
+    // Close modal. The onPostCreated() call is removed to prevent immediate overwrite 
+    // of the locally recomposed email by a fetch from the server.
+    // The user will see the recomposed version immediately upon re-clicking the cell.
+    // A separate mechanism would be needed to persist this change to the backend.
     setIsEmailDetailsModalOpen(false);
-    if(onPostCreated) {
-      console.log("Calling onPostCreated callback for refresh");
-      onPostCreated();
-    }
   };
 
   const getTagStyle = (type) => {
