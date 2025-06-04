@@ -139,9 +139,26 @@ export default function EmailGenerationAI() {
       }
 
       console.log("Successfully generated campaign data:", responseBody);
-      setNewlyGeneratedCampaign(responseBody);
+      
+      let newCalendarItems = [];
+      if (responseBody && Array.isArray(responseBody.emails)) {
+        newCalendarItems = responseBody.emails;
+      } else if (responseBody && Array.isArray(responseBody.posts)) {
+        newCalendarItems = responseBody.posts;
+      } else if (Array.isArray(responseBody)) {
+        newCalendarItems = responseBody;
+      } else {
+        console.warn("Generated campaign data from /generate-campaign is not in a recognized array format (e.g., response.emails, response.posts, or response itself being an array). The calendar might appear empty or not update as expected with only the new campaign.", responseBody);
+        // Defaulting to an empty array if the structure is not recognized,
+        // to ensure only new (and correctly formatted) data is shown.
+        newCalendarItems = [];
+      }
+      
+      setPostData(newCalendarItems); // Update postData to show ONLY the newly generated items
+      setNewlyGeneratedCampaign(responseBody); // Store the full response, might be used by CalendarResult or other UI elements
       toast.success("Campaign generated successfully!");
-      fetchPosts();
+      // fetchPosts(); // Removed: We want to show only the new campaign items in postData initially.
+                     // fetchPosts is still available via onPostCreated and on mount.
     } catch (error) {
       console.error('Error details:', error);
       toast.error(error.message || "Failed to generate campaign. Please try again.");

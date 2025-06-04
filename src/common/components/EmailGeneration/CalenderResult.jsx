@@ -35,42 +35,7 @@ export default function CalendarResult({
     const month = today.getMonth(); 
 
     return [
-      {
-        id: 'email-dummy-1',
-        post_date: new Date(year, month, 5).toISOString(),
-        caption: 'Welcome Series - Day 1',
-        platform: 'Email',
-        type: 'Initial Mail',
-        subject: 'Welcome to Our Platform!',
-        body: 'Dear new user,\n\nWelcome to our platform! We are thrilled to have you join our community. Explore our features and let us know if you have any questions.'
-      },
-      {
-        id: 'email-dummy-2',
-        post_date: new Date(year, month, 12).toISOString(),
-        caption: 'Follow-up on your recent activity',
-        platform: 'Email',
-        type: 'Follow Up Mail',
-        subject: 'Quick Question About Your Recent Visit',
-        body: 'Hi there,\n\nWe noticed you were Browse our services recently. Is there anything we can help you with or any questions you have?'
-      },
-      {
-        id: 'email-dummy-3',
-        post_date: new Date(year, month, 22).toISOString(),
-        caption: 'Important Update: New Feature Launch',
-        platform: 'Email',
-        type: 'Notification Mail',
-        subject: 'Exciting News: Introducing Our Latest Feature!',
-        body: 'Hello valued customer,\n\nWe are excited to announce a new feature that will enhance your experience...'
-      },
-      {
-        id: 'email-dummy-4',
-        post_date: new Date(year, month, 28).toISOString(),
-        caption: 'Confirmation: Your Subscription Renewal',
-        platform: 'Email',
-        type: 'Confirmation Mail',
-        subject: 'Your Subscription Has Been Renewed!',
-        body: 'Thank you for continuing your subscription with us. Your service has been successfully renewed for another year.'
-      },
+   
     ];
   };
   // --- End Dummy Email Event Data ---
