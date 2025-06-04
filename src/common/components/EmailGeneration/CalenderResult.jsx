@@ -10,6 +10,29 @@ import AuthModal from "../ui/Toggle";
 import { useLocation } from "react-router-dom";
 import EmailDetailsModal from './Modal/Index'
 
+// Helper function for simple string hashing
+function simpleHash(str) {
+  let hash = 0;
+  if (!str || str.length === 0) return hash;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0; // Convert to 32bit integer
+  }
+  return Math.abs(hash);
+}
+
+// Define a palette of colors for dynamic tags
+const dynamicColorPalette = [
+  { color: "text-purple-600", bg: "bg-purple-100", border: "border-purple-600" },
+  { color: "text-pink-600", bg: "bg-pink-100", border: "border-pink-600" },
+  { color: "text-teal-600", bg: "bg-teal-100", border: "border-teal-600" },
+  { color: "text-indigo-600", bg: "bg-indigo-100", border: "border-indigo-600" },
+  { color: "text-yellow-700", bg: "bg-yellow-100", border: "border-yellow-700" },
+  { color: "text-cyan-600", bg: "bg-cyan-100", border: "border-cyan-600" },
+  { color: "text-lime-600", bg: "bg-lime-100", border: "border-lime-600" },
+];
+
 export default function CalendarResult({
   postData = [],
   loading,
@@ -21,6 +44,7 @@ export default function CalendarResult({
   const [isEmailDetailsModalOpen, setIsEmailDetailsModalOpen] = useState(false);
   const [selectedEmailData, setSelectedEmailData] = useState(null);
   const [processedPosts, setProcessedPosts] = useState([]);
+  const [emailTypes, setEmailTypes] = useState([]);
 
   const daysOfWeek = ["Sun", "Mon", "Tues", "Wed", "Thurs", "Fri", "Sat"];
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -29,43 +53,52 @@ export default function CalendarResult({
   const location = useLocation();
   const isEmailGenerator = location.pathname === "/email-generator";
 
-  const getDummyEmailEvents = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth(); 
-
-    return [
-   
-    ];
-  };
-  // --- End Dummy Email Event Data ---
-
   function transformApiEmailToPost(apiEmail, campaignStartDate, emailIndex, campaignObjective, targetAudience) {
     let postDate;
-    const timingLower = apiEmail.timing?.toLowerCase();
-    const effectiveCampaignStartDate = campaignStartDate || new Date(); 
+    const { timing } = apiEmail; // e.g., "Send on June 5, 2025, at 10:00 AM" or "Day 1"
+    const effectiveCampaignStartDate = campaignStartDate || new Date(); // Base for "Day X" or ultimate fallback
 
-    if (timingLower && timingLower.startsWith('day ')) {
-      const dayNumber = parseInt(timingLower.replace('day ', ''), 10);
-      if (!isNaN(dayNumber)) {
-        postDate = new Date(effectiveCampaignStartDate);
-        postDate.setDate(effectiveCampaignStartDate.getDate() + dayNumber - 1);
-      } else {
-        postDate = new Date(effectiveCampaignStartDate);
-        postDate.setDate(effectiveCampaignStartDate.getDate() + emailIndex);
+    if (timing) {
+      // Try to parse specific date format like "Send on June 5, 2025, at 10:00 AM"
+      const specificDateMatch = timing.match(/^Send on (\w+) (\d{1,2}), (\d{4})/i);
+      if (specificDateMatch) {
+        const monthName = specificDateMatch[1];
+        const day = parseInt(specificDateMatch[2], 10);
+        const year = parseInt(specificDateMatch[3], 10);
+
+        // Convert month name to month index (0-11)
+        const monthIndex = new Date(Date.parse(monthName + " 1, 2000")).getMonth();
+
+        if (!isNaN(day) && !isNaN(year) && !isNaN(monthIndex)) {
+          const parsed = new Date(year, monthIndex, day);
+          if (!isNaN(parsed.getTime())) {
+            postDate = parsed;
+          }
+        }
       }
-    } else if (apiEmail.timing) {
-      const parsedDate = new Date(apiEmail.timing);
-      if (!isNaN(parsedDate.getTime())) {
-        postDate = parsedDate;
-      } else {
-        postDate = new Date(effectiveCampaignStartDate);
-        postDate.setDate(effectiveCampaignStartDate.getDate() + emailIndex);
+
+      // If specific date parsing failed or wasn't applicable (e.g. timing is "Day 1"), try "Day X" format
+      if (!postDate) {
+        const timingLower = timing.toLowerCase();
+        if (timingLower.startsWith('day ')) {
+          const dayNumber = parseInt(timingLower.replace('day ', ''), 10);
+          if (!isNaN(dayNumber)) {
+            postDate = new Date(effectiveCampaignStartDate);
+            postDate.setDate(effectiveCampaignStartDate.getDate() + dayNumber - 1);
+          }
+        }
       }
-    } else {
+    }
+
+    // Fallback: If postDate is still not set (no timing, or unparsable timing),
+    // use the campaign start date + index.
+    if (!postDate) {
       postDate = new Date(effectiveCampaignStartDate);
       postDate.setDate(effectiveCampaignStartDate.getDate() + emailIndex);
     }
+
+    // Normalize to start of day for consistent calendar mapping
+    postDate.setHours(0, 0, 0, 0);
 
     return {
       id: `new-email-${apiEmail.email_number || emailIndex}-${Date.now()}`,
@@ -80,28 +113,69 @@ export default function CalendarResult({
       target_audience: targetAudience,
     };
   }
-
+  
   useEffect(() => {
     let combinedPosts = [...postData];
-    const dummyEmails = isEmailGenerator ? getDummyEmailEvents() : [];
-    const postDataIds = new Set(postData.map(p => p.id));
-    const uniqueDummyEmails = dummyEmails.filter(de => !postDataIds.has(de.id));
-    combinedPosts = [...combinedPosts, ...uniqueDummyEmails];
+    let firstCampaignEmailDate = null; // To store the date of the first email in a new campaign
 
     if (newlyGeneratedCampaign && newlyGeneratedCampaign.campaign_strategy && newlyGeneratedCampaign.campaign_strategy.emails) {
-      const campaignStartDate = new Date();
+      const campaignStartDateFromEffect = new Date(); // Default start date for fallbacks
       const { campaign_objective, target_audience } = newlyGeneratedCampaign.campaign_strategy;
+      
       const transformedNewEmails = newlyGeneratedCampaign.campaign_strategy.emails.map((email, index) => 
-        transformApiEmailToPost(email, campaignStartDate, index, campaign_objective, target_audience)
+        transformApiEmailToPost(email, campaignStartDateFromEffect, index, campaign_objective, target_audience)
       );
+
+      if (transformedNewEmails.length > 0) {
+        const dateOfFirst = new Date(transformedNewEmails[0].post_date);
+        if(!isNaN(dateOfFirst.getTime())) {
+            firstCampaignEmailDate = dateOfFirst; // Capture for auto-navigation
+        }
+      }
+
       const newEmailIds = new Set(transformedNewEmails.map(ne => ne.id));
       combinedPosts = [
         ...transformedNewEmails,
-        ...combinedPosts.filter(p => !newEmailIds.has(p.id))
+        ...combinedPosts.filter(p => !newEmailIds.has(p.id) && p.platform === 'Email')
       ];
+    } else {
+      combinedPosts = combinedPosts.filter(p => p.platform === 'Email');
     }
     setProcessedPosts(combinedPosts);
-  }, [postData, newlyGeneratedCampaign, isEmailGenerator]);
+
+    if (isEmailGenerator) {
+      const types = [...new Set(combinedPosts.map(p => p.type).filter(Boolean))];
+      setEmailTypes(types);
+
+      // Auto-navigate calendar to the month of the first email of a new campaign
+      if (firstCampaignEmailDate) {
+        if (currentDate.getFullYear() !== firstCampaignEmailDate.getFullYear() ||
+            currentDate.getMonth() !== firstCampaignEmailDate.getMonth()) {
+          setCurrentDate(new Date(firstCampaignEmailDate.getFullYear(), firstCampaignEmailDate.getMonth(), 1));
+        }
+      }
+    }
+  }, [postData, newlyGeneratedCampaign, isEmailGenerator]); // currentDate is intentionally NOT a dependency here
+
+  const getTagStyle = (type) => {
+    if (!type) return { label: 'Untyped', color: "text-gray-700", bg: "bg-gray-100", border: "border-gray-400" };
+
+    switch (type) {
+      case 'Initial Mail': 
+        return { label: type, color: "text-[#007BFF]", bg: "bg-[#007BFF1A]", border: "border-[#007BFF]" };
+      case 'Follow Up Mail': 
+        return { label: type, color: "text-[#FFA500]", bg: "bg-[#FFA5001A]", border: "border-[#FFA500]" };
+      case 'Confirmation Mail': 
+        return { label: type, color: "text-[#28A745]", bg: "bg-[#28A7451A]", border: "border-[#28A745]" };
+      case 'Notification Mail': 
+        return { label: type, color: "text-[#DC3545]", bg: "bg-[#DC35451A]", border: "border-[#DC3545]" };
+      default: {
+        const hash = simpleHash(type);
+        const selectedStyle = dynamicColorPalette[hash % dynamicColorPalette.length];
+        return { label: type, ...selectedStyle };
+      }
+    }
+  };
 
   const monthYearLabel = currentDate.toLocaleString("default", {
     month: "long",
@@ -280,15 +354,10 @@ export default function CalendarResult({
                 if (!inMonth) {
                   return 'border border-[#E2E8F0] bg-gray-50 text-gray-400';
                 }
-                if (hasData && isEmailGenerator) {
-                  const firstEntryType = entriesForCell[0]?.type;
-                  switch (firstEntryType) {
-                    case 'Initial Mail': return 'border-2 border-[#007BFF]';
-                    case 'Follow Up Mail': return 'border-2 border-[#FFA500]';
-                    case 'Confirmation Mail': return 'border-2 border-[#28A745]';
-                    case 'Notification Mail': return 'border-2 border-[#DC3545]';
-                    default: return 'border border-gray-300 bg-white';
-                  }
+                if (hasData && isEmailGenerator && entriesForCell[0]?.type) {
+                  const firstEntryType = entriesForCell[0].type;
+                  const style = getTagStyle(firstEntryType);
+                  return `border-2 ${style.border} bg-white`; 
                 }
                 return 'border border-gray-300 bg-white';
               })();
@@ -307,41 +376,19 @@ export default function CalendarResult({
               );
             })}
           </div>
-          {isEmailGenerator && (
+          {isEmailGenerator && emailTypes.length > 0 && (
             <div className="flex flex-wrap gap-2 py-4">
-              {[
-                {
-                  label: "Initial Mail",
-                  color: "text-[#007BFF]",
-                  bg: "bg-[#007BFF1A]",
-                  border: "border-[#007BFF]",
-                },
-                {
-                  label: "Follow Up Mail",
-                  color: "text-[#FFA500]",
-                  bg: "bg-[#FFA5001A]",
-                  border: "border-[#28A745]",
-                },
-                {
-                  label: "Confirmation Mail",
-                  color: "text-[#16A34A]",
-                  bg: "bg-[#28A7451A]",
-                  border: "border-[#16A34A]",
-                },
-                {
-                  label: "Notification Mail",
-                  color: "text-[#17A2B8]",
-                  bg: "bg-[#17A2B81A]",
-                  border: "border-[#17A2B8]",
-                },
-              ].map((chip, idx) => (
-                <span
-                  key={idx}
-                  className={`border text-sm font-normal rounded-full px-4 py-1 ${chip.bg} ${chip.color} ${chip.border}`}
-                >
-                  {chip.label}
-                </span>
-              ))}
+              {emailTypes.map((type) => {
+                const style = getTagStyle(type);
+                return (
+                  <span
+                    key={type}
+                    className={`border text-sm font-normal rounded-full px-4 py-1 ${style.bg} ${style.color} ${style.border}`}
+                  >
+                    {style.label}
+                  </span>
+                );
+              })}
             </div>
           )}
         </>
