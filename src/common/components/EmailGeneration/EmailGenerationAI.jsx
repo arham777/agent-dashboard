@@ -14,6 +14,7 @@ export default function EmailGenerationAI() {
   const [toneAndStyle, setToneAndStyle] = useState("");
   const [numEmails, setNumEmails] = useState("3"); // Changed to string to handle empty input
   const [newlyGeneratedCampaign, setNewlyGeneratedCampaign] = useState(null);
+  const [submittedApiContentFocus, setSubmittedApiContentFocus] = useState("");
 
   const contentFocusOptions = [
     "Complete campaign sequence",
@@ -82,6 +83,7 @@ export default function EmailGenerationAI() {
       toast.error("Invalid content focus selected. Please try again.");
       return;
     }
+    setSubmittedApiContentFocus(apiContentFocus); // Store the API-ready content focus
 
     if (contentFocus === "Complete campaign sequence") {
       const emailCount = parseInt(numEmails);
@@ -249,6 +251,7 @@ export default function EmailGenerationAI() {
             onPostCreated={fetchPosts}
             newlyGeneratedCampaign={newlyGeneratedCampaign}
             companyName={companyName}
+            submittedApiContentFocus={submittedApiContentFocus}
           />
         </div>
       </div>

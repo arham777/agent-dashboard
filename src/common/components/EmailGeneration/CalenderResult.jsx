@@ -78,6 +78,7 @@ export default function CalendarResult({
   onPostCreated,
   newlyGeneratedCampaign,
   companyName = "",
+  submittedApiContentFocus = "",
 }) {
   const [viewMode, setViewMode] = React.useState("calendar");
   const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false);
@@ -578,6 +579,7 @@ export default function CalendarResult({
           userId={userId}
           clientName={clientNameToPass} // Now more robustly determined with companyName priority
           onEmailRecomposed={handleEmailRecomposed}
+          submittedApiContentFocus={submittedApiContentFocus}
         />
       )}
     </div>

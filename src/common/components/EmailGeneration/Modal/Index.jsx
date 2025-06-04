@@ -45,7 +45,8 @@ export default function MailSchedulerModal({
   scheduledEmailsForDate = [],
   onEmailRecomposed,
   userId,
-  clientName
+  clientName,
+  submittedApiContentFocus
 }) {
   const [selectedTab, setSelectedTab] = useState("scheduled"); 
   
@@ -90,24 +91,30 @@ export default function MailSchedulerModal({
     
     console.log("Submitting compose with client_name:", clientName);
     
-    const payload = {
+    // Prepare query parameters
+    const queryParams = new URLSearchParams({
       user_id: userId,
       client_name: clientName,
       campaign_objective: campaignObjective,
       target_audience: targetAudience,
-      tone_and_style: toneAndStyle,
-    };
+      tone_and_style: toneAndStyle.toLowerCase(), // Send as lowercase
+      // content_focus is NOT sent to /generate-single-email as per API spec
+    });
     
-    console.log("Payload for email generation:", payload);
+    const apiUrl = `http://10.229.220.15:8000/generate-single-email?${queryParams.toString()}`;
+
+    // console.log("Payload for email generation:", payload); // Old log for body payload
+    console.log("Sending request to generate-single-email with query params:", queryParams.toString());
+    console.log("Full API URL:", apiUrl);
 
     try {
-      console.log("Sending request to generate-single-email...");
-      const response = await fetch('http://10.229.220.15:8000/generate-single-email', {
+      // console.log("Sending request to generate-single-email..."); // Old log
+      const response = await fetch(apiUrl, { // apiUrl now includes query params
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
+        // headers: {
+        //   'Content-Type': 'application/json', // Not needed if no body
+        // },
+        // body: JSON.stringify(payload), // Parameters are now in the URL
       });
 
       if (!response.ok) {
