@@ -84,6 +84,7 @@ export default function MailSchedulerModal({
     }
     if (!userId) {
       console.error("User ID is missing. Cannot generate email.");
+      alert("User ID is missing. Please log in again or refresh the page.");
       return;
     }
 

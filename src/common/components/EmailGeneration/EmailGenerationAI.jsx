@@ -99,8 +99,24 @@ export default function EmailGenerationAI() {
 
     setSubmitting(true);
     try {
-      // Default user_id as requested, since authentication is not yet connected for this endpoint
-      const userIdForCampaign = 1; 
+      // Get user_id from localStorage, similar to fetchPosts
+      const storedUser = localStorage.getItem("authenticatedUser");
+      let userIdForCampaign = null;
+      if (storedUser) {
+        try {
+            const parsedUser = JSON.parse(storedUser);
+            userIdForCampaign = parsedUser.userId || parsedUser.data?.staffid?.toString();
+        } catch (e) {
+            console.error("Failed to parse stored user for campaign generation:", e);
+        }
+      }
+      
+      // If userId couldn't be retrieved, show error and return
+      if (!userIdForCampaign) {
+        toast.error("User ID not found. Please log in again.");
+        setSubmitting(false);
+        return;
+      }
 
       const payload = {
         user_id: userIdForCampaign,

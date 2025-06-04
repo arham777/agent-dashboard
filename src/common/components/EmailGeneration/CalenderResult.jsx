@@ -94,7 +94,23 @@ export default function CalendarResult({
   const location = useLocation();
   const isEmailGenerator = location.pathname === "/email-generator";
 
-  const userId = 39;
+  // Get user ID from localStorage instead of hardcoded value
+  const [userId, setUserId] = useState(null);
+
+  // Get user ID from localStorage on component mount
+  useEffect(() => {
+    const storedUser = localStorage.getItem("authenticatedUser");
+    let userIdFromStorage = null;
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        userIdFromStorage = parsedUser.userId || parsedUser.data?.staffid?.toString();
+        setUserId(userIdFromStorage);
+      } catch (e) {
+        console.error("Failed to parse stored user in CalenderResult:", e);
+      }
+    }
+  }, []);
 
   const handleExportEmails = () => {
     if (!processedPosts || processedPosts.length === 0) {
