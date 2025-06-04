@@ -116,11 +116,11 @@ export default function CalendarResult({
 
     const escapeCsvCell = (cellData) => {
       if (cellData === null || cellData === undefined) {
-        return ''; // Return empty string for null or undefined
+        return '';
       }
       const stringData = String(cellData);
       if (stringData.includes(',') || stringData.includes('\n') || stringData.includes('"')) {
-        return `"${stringData.replace(/"/g, '""')}"`; // Enclose in quotes and escape existing quotes
+        return `"${stringData.replace(/"/g, '""')}"`;
       }
       return stringData;
     };
@@ -131,11 +131,14 @@ export default function CalendarResult({
         ? postDate.toLocaleDateString('en-CA') // Format: YYYY-MM-DD
         : 'Invalid Date';
 
+      // Process body to be single line: replace newlines (\r\n or \n) with a space
+      const singleLineBody = post.body ? String(post.body).replace(/\r\n|\r|\n/g, ' ') : '';
+
       return [
         escapeCsvCell(post.id),
         escapeCsvCell(formattedDate),
         escapeCsvCell(post.subject || post.caption), // Use subject, fallback to caption
-        escapeCsvCell(post.body),
+        escapeCsvCell(singleLineBody), // Use the processed single-line body
         escapeCsvCell(post.type),
         escapeCsvCell(post.campaign_objective),
         escapeCsvCell(post.target_audience),
