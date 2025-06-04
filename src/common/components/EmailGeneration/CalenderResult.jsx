@@ -96,6 +96,72 @@ export default function CalendarResult({
 
   const userId = 39;
 
+  const handleExportEmails = () => {
+    if (!processedPosts || processedPosts.length === 0) {
+      alert("No emails to export."); // Or use a toast notification
+      return;
+    }
+
+    const headers = [
+      "ID",
+      "Post Date",
+      "Subject",
+      "Body",
+      "Type",
+      "Campaign Objective",
+      "Target Audience",
+      "Client Name",
+      "Timing Info"
+    ];
+
+    const escapeCsvCell = (cellData) => {
+      if (cellData === null || cellData === undefined) {
+        return ''; // Return empty string for null or undefined
+      }
+      const stringData = String(cellData);
+      if (stringData.includes(',') || stringData.includes('\n') || stringData.includes('"')) {
+        return `"${stringData.replace(/"/g, '""')}"`; // Enclose in quotes and escape existing quotes
+      }
+      return stringData;
+    };
+
+    const rows = processedPosts.map(post => {
+      const postDate = new Date(post.post_date);
+      const formattedDate = !isNaN(postDate.getTime())
+        ? postDate.toLocaleDateString('en-CA') // Format: YYYY-MM-DD
+        : 'Invalid Date';
+
+      return [
+        escapeCsvCell(post.id),
+        escapeCsvCell(formattedDate),
+        escapeCsvCell(post.subject || post.caption), // Use subject, fallback to caption
+        escapeCsvCell(post.body),
+        escapeCsvCell(post.type),
+        escapeCsvCell(post.campaign_objective),
+        escapeCsvCell(post.target_audience),
+        escapeCsvCell(post.client_name),
+        escapeCsvCell(post.originalApiData?.timing || post.timing || '') // Timing info
+      ].join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", "email_campaign_export.csv");
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } else {
+      alert("CSV export is not supported in this browser.");
+    }
+  };
+
   // Debug log to see the actual structure - this will help identify where client_name is stored
   useEffect(() => {
     if (newlyGeneratedCampaign) {
@@ -252,25 +318,51 @@ export default function CalendarResult({
       
       // Extract client name from API response or fall back to original
       const clientNameFromResponse = extractClientName(newEmailApiData) || originalPost.client_name;
+
+      // Default to using newEmailApiData directly, then check for nested structure
+      let emailDetailsToUse = newEmailApiData;
+      let campaignObjectiveToUse = newEmailApiData.campaign_objective; // Top-level from API response
+      let targetAudienceToUse = newEmailApiData.target_audience;   // Top-level from API response
+
+      if (newEmailApiData.campaign_strategy && 
+          Array.isArray(newEmailApiData.campaign_strategy.emails) && 
+          newEmailApiData.campaign_strategy.emails.length > 0) {
+        
+        emailDetailsToUse = newEmailApiData.campaign_strategy.emails[0];
+        console.log("Using nested email details from API response:", emailDetailsToUse);
+
+        // Prefer objective and audience from the campaign_strategy level of the response if available
+        if (newEmailApiData.campaign_strategy.campaign_objective) {
+          campaignObjectiveToUse = newEmailApiData.campaign_strategy.campaign_objective;
+        }
+        if (newEmailApiData.campaign_strategy.target_audience) {
+          targetAudienceToUse = newEmailApiData.campaign_strategy.target_audience;
+        }
+      } else {
+        console.log("Using flat email details from API response (or direct object if not API like structure):", emailDetailsToUse);
+      }
       
       // Create the recomposed email, keeping original date and ID
       const recomposedEmail = {
         ...originalPost,
-        id: originalPost.id,
+        id: originalPost.id, // Ensure ID is preserved
         post_date: originalPost.post_date, // Preserve the original date
-        caption: newEmailApiData.subject_line || newEmailApiData.tag || 'Recomposed Email',
-        subject: newEmailApiData.subject_line || '',
-        body: newEmailApiData.email_content || '',
-        type: newEmailApiData.tag || originalPost.type || 'General Email',
-        campaign_objective: newEmailApiData.campaign_objective || originalPost.campaign_objective,
-        target_audience: newEmailApiData.target_audience || originalPost.target_audience,
+        
+        caption: emailDetailsToUse.subject_line || emailDetailsToUse.tag || 'Recomposed Email',
+        subject: emailDetailsToUse.subject_line || '',
+        body: emailDetailsToUse.email_content || '',
+        type: emailDetailsToUse.tag || originalPost.type || 'General Email',
+        
+        campaign_objective: campaignObjectiveToUse || originalPost.campaign_objective,
+        target_audience: targetAudienceToUse || originalPost.target_audience,
         client_name: clientNameFromResponse, 
-        originalApiData: newEmailApiData,
-        // Preserve any timing information from original
-        timing: originalPost.timing,
+        
+        originalApiData: newEmailApiData, // Store the full raw response for reference
+        // Preserve any timing information from original post, as the slot in calendar is fixed
+        timing: originalPost.timing, 
       };
 
-      console.log("Recomposed email:", recomposedEmail);
+      console.log("Recomposed email object:", recomposedEmail);
 
       const updatedPosts = [...prevPosts];
       updatedPosts[postIndex] = recomposedEmail;
@@ -445,7 +537,10 @@ export default function CalendarResult({
               } `}
             />
           </button>
-          <button className="px-4 py-1.5 rounded-md text-white font-medium bg-gradient-to-r from-[#02B4FE] to-[#0964F8]">
+          <button 
+            onClick={handleExportEmails} 
+            className="px-4 py-1.5 rounded-md text-white font-medium bg-gradient-to-r from-[#02B4FE] to-[#0964F8] hover:opacity-90 transition"
+          >
             Export
           </button>
         </div>
