@@ -118,24 +118,28 @@ export default function EmailGenerationAI() {
         return;
       }
 
-      const payload = {
-        user_id: userIdForCampaign,
-        client_name: companyName,
-        campaign_objective: companyObjective,
-        target_audience: targetAudience,
-        content_focus: apiContentFocus,
-        num_emails: contentFocus === "Complete campaign sequence" ? parseInt(numEmails) : 1,
-        tone_and_style: toneAndStyle.toLowerCase()
-      };
+      const formData = new URLSearchParams();
+      formData.append('user_id', userIdForCampaign);
+      formData.append('client_name', companyName);
+      formData.append('campaign_objective', companyObjective);
+      formData.append('target_audience', targetAudience);
+      formData.append('content_focus', apiContentFocus);
+      formData.append('num_emails', contentFocus === "Complete campaign sequence" ? parseInt(numEmails) : 1);
+      
+      if (toneAndStyle) {
+        formData.append('tone_and_style', toneAndStyle.toLowerCase());
+      }
 
-      console.log('Sending payload to /generate-campaign:', payload);
+      console.log('Sending form data to /generate-campaign:', formData.toString());
 
-      const response = await fetch('http://10.229.220.15:8000/generate-campaign', {
+      const apiUrl = 'http://10.229.220.15:8000/generate-campaign'; // URL without query params
+
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: JSON.stringify(payload)
+        body: formData // Send URLSearchParams object directly
       });
       
       const responseBody = await response.json(); // Always try to parse JSON
