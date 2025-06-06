@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import CalendarResult from "./CalenderResult";
 import { toast } from "react-toastify";
 import LabeledInput from "../ui/InputFields/ LabeledInput";
+import { IoChevronDownOutline } from "react-icons/io5";
 
 export default function EmailGenerationAI() {
   const [postData, setPostData] = useState([]);
@@ -15,6 +16,10 @@ export default function EmailGenerationAI() {
   const [numEmails, setNumEmails] = useState("3"); // Changed to string to handle empty input
   const [newlyGeneratedCampaign, setNewlyGeneratedCampaign] = useState(null);
   const [submittedApiContentFocus, setSubmittedApiContentFocus] = useState("");
+  // New state for campaigns history
+  const [allCampaigns, setAllCampaigns] = useState([]);
+  const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
+  const [selectedCampaignId, setSelectedCampaignId] = useState(null);
 
   const contentFocusOptions = [
     "Complete campaign sequence",
@@ -45,12 +50,62 @@ export default function EmailGenerationAI() {
         // If fetchPosts absolutely needs a user_id and none is found, you might want to toast.error or return.
         // For now, let it try to fetch if the endpoint supports it or if it's not critical.
       }
+      
+      // Use the new endpoint for fetching campaigns
       const res = await fetch(
-        `http://10.229.220.15:8000/get-user-posts${userIdForFetch ? `?user_id=${userIdForFetch}` : ''}`
+        `http://10.229.220.15:8000/Emails/${userIdForFetch}`
       );
-      if (!res.ok) throw new Error("Failed to fetch posts");
+      
+      if (!res.ok) throw new Error("Failed to fetch campaigns");
+      
       const data = await res.json();
-      setPostData(data);
+      
+      // Store all campaigns for the dropdown
+      if (data && data.campaigns && Array.isArray(data.campaigns)) {
+        setAllCampaigns(data.campaigns);
+        
+        // Find the campaign with the highest ID
+        let highestIdCampaign = data.campaigns.reduce(
+          (highest, current) => (current.id > highest.id ? current : highest),
+          { id: 0 }
+        );
+        
+        // If we have campaigns, set the selected ID to the highest one and prepare its data
+        if (highestIdCampaign && highestIdCampaign.id > 0) {
+          setSelectedCampaignId(highestIdCampaign.id);
+          
+          // Transform the campaign data to match expected format for CalendarResult
+          if (highestIdCampaign.campaign && 
+              highestIdCampaign.campaign.campaign_strategy && 
+              highestIdCampaign.campaign.campaign_strategy.emails) {
+            
+            // Set the newlyGeneratedCampaign with the campaign data for display
+            setNewlyGeneratedCampaign(highestIdCampaign.campaign);
+            setPostData(highestIdCampaign.campaign.campaign_strategy.emails);
+            
+            // Extract company name if available
+            if (highestIdCampaign.campaign.campaign_strategy.campaign_name) {
+              setCompanyName(highestIdCampaign.campaign.campaign_strategy.campaign_name);
+            }
+            
+            // Extract content focus
+            if (highestIdCampaign.campaign.campaign_strategy.content_focus) {
+              const apiContentFocus = highestIdCampaign.campaign.campaign_strategy.content_focus;
+              setSubmittedApiContentFocus(apiContentFocus);
+              
+              // Convert API content focus to UI format
+              if (apiContentFocus === "complete_campaign_sequence") {
+                setContentFocus("Complete campaign sequence");
+              } else if (apiContentFocus === "single_email") {
+                setContentFocus("Single mail");
+              }
+            }
+          }
+        }
+      } else {
+        setPostData([]);
+        setNewlyGeneratedCampaign(null);
+      }
     } catch (err) {
       console.error(err);
       toast.error("Unable to load calendar data.");
@@ -62,6 +117,39 @@ export default function EmailGenerationAI() {
   useEffect(() => {
     fetchPosts();
   }, [fetchPosts]);
+  
+  // Function to handle campaign selection from dropdown
+  const handleCampaignSelect = (campaign) => {
+    setSelectedCampaignId(campaign.id);
+    setShowHistoryDropdown(false);
+    
+    // Transform the selected campaign data for display
+    if (campaign.campaign && 
+        campaign.campaign.campaign_strategy && 
+        campaign.campaign.campaign_strategy.emails) {
+      
+      setNewlyGeneratedCampaign(campaign.campaign);
+      setPostData(campaign.campaign.campaign_strategy.emails);
+      
+      // Extract company name if available
+      if (campaign.campaign.campaign_strategy.campaign_name) {
+        setCompanyName(campaign.campaign.campaign_strategy.campaign_name);
+      }
+      
+      // Extract content focus
+      if (campaign.campaign.campaign_strategy.content_focus) {
+        const apiContentFocus = campaign.campaign.campaign_strategy.content_focus;
+        setSubmittedApiContentFocus(apiContentFocus);
+        
+        // Convert API content focus to UI format
+        if (apiContentFocus === "complete_campaign_sequence") {
+          setContentFocus("Complete campaign sequence");
+        } else if (apiContentFocus === "single_email") {
+          setContentFocus("Single mail");
+        }
+      }
+    }
+  };
 
   const handleSubmit = async () => {
     if (!companyName || !companyObjective || !targetAudience || !contentFocus || !toneAndStyle) {
@@ -179,8 +267,9 @@ export default function EmailGenerationAI() {
       setPostData(newCalendarItems); // Update postData to show ONLY the newly generated items
       setNewlyGeneratedCampaign(responseBody); // Store the full response, might be used by CalendarResult or other UI elements
       toast.success("Campaign generated successfully!");
-      // fetchPosts(); // Removed: We want to show only the new campaign items in postData initially.
-                     // fetchPosts is still available via onPostCreated and on mount.
+      
+      // Refresh campaigns to include the newly created one
+      fetchPosts();
     } catch (error) {
       console.error('Error details:', error);
       toast.error(error.message || "Failed to generate campaign. Please try again.");
@@ -199,7 +288,38 @@ export default function EmailGenerationAI() {
       <div className="flex flex-col md:flex-row gap-4 py-2">
         {/* Left Panel */}
         <div className="w-full md:w-[40%] bg-white rounded-xl p-4">
-          <div className=" flex flex-col gap-4">
+          <div className="flex flex-col gap-4">
+            {/* History Dropdown Button */}
+            <div className="relative">
+              <button 
+                onClick={() => setShowHistoryDropdown(!showHistoryDropdown)}
+                className="w-full flex justify-between items-center px-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-md hover:bg-gray-100"
+              >
+                <span>Campaign History</span>
+                <IoChevronDownOutline className={`transition-transform ${showHistoryDropdown ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {showHistoryDropdown && allCampaigns.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                  {allCampaigns.map((campaign) => (
+                    <div 
+                      key={campaign.id}
+                      onClick={() => handleCampaignSelect(campaign)}
+                      className={`px-4 py-2 text-sm cursor-pointer hover:bg-gray-100 ${selectedCampaignId === campaign.id ? 'bg-blue-50 text-blue-600' : ''}`}
+                    >
+                      {campaign.id}: {campaign.campaign?.campaign_strategy?.campaign_name || 'Unnamed Campaign'}
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {showHistoryDropdown && allCampaigns.length === 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg">
+                  <div className="px-4 py-2 text-sm text-gray-500">No campaigns found</div>
+                </div>
+              )}
+            </div>
+            
             <LabeledInput
               label="Company Name"
               name="companyName"
