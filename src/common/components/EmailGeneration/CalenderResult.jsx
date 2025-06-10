@@ -197,23 +197,40 @@ export default function CalendarResult({
 
   function transformApiEmailToPost(apiEmail, campaignStartDate, emailIndex, campaignObjective, targetAudience, clientNameFromCampaign) {
     let postDate;
-    const { timing } = apiEmail; // e.g., "Send on June 5, 2025, at 10:00 AM" or "Day 1"
+    const { timing } = apiEmail; // e.g., "Send on June 5, 2025, at 10:00 AM" or "Day 1" or "2025-07-06"
     const effectiveCampaignStartDate = campaignStartDate || new Date(); // Base for "Day X" or ultimate fallback
 
     if (timing) {
-      const specificDateMatch = timing.match(/^Send on (\w+) (\d{1,2}), (\d{4})/i);
-      if (specificDateMatch) {
-        const monthName = specificDateMatch[1];
-        const day = parseInt(specificDateMatch[2], 10);
-        const year = parseInt(specificDateMatch[3], 10);
-        const monthIndex = new Date(Date.parse(monthName + " 1, 2000")).getMonth();
-        if (!isNaN(day) && !isNaN(year) && !isNaN(monthIndex)) {
-          const parsed = new Date(year, monthIndex, day);
-          if (!isNaN(parsed.getTime())) {
-            postDate = parsed;
+      // Check for ISO date format YYYY-MM-DD
+      const isoDateMatch = typeof timing === 'string' && timing.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (isoDateMatch) {
+        const year = parseInt(isoDateMatch[1], 10);
+        const month = parseInt(isoDateMatch[2], 10) - 1; // JavaScript months are 0-indexed
+        const day = parseInt(isoDateMatch[3], 10);
+        const parsed = new Date(year, month, day);
+        if (!isNaN(parsed.getTime())) {
+          postDate = parsed;
+        }
+      }
+
+      // If not an ISO format, check for "Send on Month Day, Year" format
+      if (!postDate) {
+        const specificDateMatch = timing.match(/^Send on (\w+) (\d{1,2}), (\d{4})/i);
+        if (specificDateMatch) {
+          const monthName = specificDateMatch[1];
+          const day = parseInt(specificDateMatch[2], 10);
+          const year = parseInt(specificDateMatch[3], 10);
+          const monthIndex = new Date(Date.parse(monthName + " 1, 2000")).getMonth();
+          if (!isNaN(day) && !isNaN(year) && !isNaN(monthIndex)) {
+            const parsed = new Date(year, monthIndex, day);
+            if (!isNaN(parsed.getTime())) {
+              postDate = parsed;
+            }
           }
         }
       }
+      
+      // If neither ISO nor specific date format, check for "Day X" format
       if (!postDate) {
         const timingLower = timing.toLowerCase();
         if (timingLower.startsWith('day ')) {
