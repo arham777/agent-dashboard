@@ -13,8 +13,6 @@ const Authentication = () => {
   const [statusMessage, setStatusMessage] = useState(
     "Initializing authentication..."
   );
-
-  // IMPORTANT: These should ideally be stored in environment variables for security.
   const key = "fc721ab8bc759692fb3e42c0918531e9";
   const keyIV = "yhshshsjsksksisl";
   const LOCAL_STORAGE_KEY = "authenticatedUser";
@@ -24,13 +22,10 @@ const Authentication = () => {
     setError(null);
     setStatusMessage("Initializing authentication...");
 
-    // --- Improved Logic: Check local storage first ---
     const storedUserDataString = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (storedUserDataString) {
       try {
         const storedUserData = JSON.parse(storedUserDataString);
-        // A "generic auth URL" means the URL doesn't contain a new, specific encrypted token.
-        // This happens if encryptedIdFromUrl is undefined (e.g. route /auth) or is the placeholder "id".
         const isGenericAuthURL =
           !encryptedIdFromUrl ||
           (encryptedIdFromUrl.toLowerCase() === "id" &&
@@ -42,27 +37,24 @@ const Authentication = () => {
           storedUserData.data &&
           isGenericAuthURL
         ) {
-          console.log(
-            "User already authenticated (local storage) and on a generic auth path. Redirecting to dashboard..."
-          );
+        
           setStatusMessage(
             "Restoring session from local cache. Redirecting..."
           );
-          grantAccess(); // Assumes grantAccess uses existing local storage or sets auth state
+          grantAccess(); 
           navigate("/content");
           setIsLoading(false);
-          return; // Authentication successful from local storage, skip further processing
+          return;
         }
       } catch (e) {
         console.warn(
           "Error parsing local storage data. Clearing it and proceeding.",
           e
         );
-        localStorage.removeItem(LOCAL_STORAGE_KEY); // Clear corrupted data
+        localStorage.removeItem(LOCAL_STORAGE_KEY); 
       }
     }
 
-    // --- Original Logic: Handle missing or placeholder token if not authenticated from local storage ---
     if (!encryptedIdFromUrl) {
       setStatusMessage("Authentication token not found in URL.");
       setError("Invalid authentication link. No token provided.");
@@ -70,7 +62,6 @@ const Authentication = () => {
       return;
     }
 
-    // If we're at /auth/id and didn't authenticate from local storage, it's an invalid state.
     if (
       encryptedIdFromUrl.toLowerCase() === "id" &&
       encryptedIdFromUrl.length === 2
@@ -83,13 +74,10 @@ const Authentication = () => {
       return;
     }
 
-    // --- Proceed with token decryption and API validation if a specific token is present ---
     setStatusMessage("Processing authentication token...");
     let decryptedUserId;
     try {
       setStatusMessage("Decrypting token...");
-      // Assuming encryptedIdFromUrl might be URL-safe Base64, convert to standard Base64 for atob.
-      // Standard Base64 uses '+' and '/', URL-safe uses '-' and '_'.
       const standardBase64Token = encryptedIdFromUrl
         .replace(/-/g, "+")
         .replace(/_/g, "/");
@@ -125,9 +113,7 @@ const Authentication = () => {
       return;
     }
 
-    // --- Post-decryption: Check local storage again for this specific user ID (cache optimization) ---
-    // This handles cases where the token is valid but data might already be cached.
-    const currentStoredUserDataString = localStorage.getItem(LOCAL_STORAGE_KEY); // Re-fetch, could have been cleared
+    const currentStoredUserDataString = localStorage.getItem(LOCAL_STORAGE_KEY); 
     if (currentStoredUserDataString) {
       try {
         const currentStoredUserData = JSON.parse(currentStoredUserDataString);
@@ -145,7 +131,7 @@ const Authentication = () => {
           );
           setIsLoading(false);
           navigate("/content");
-          return; // Skip API call
+          return; 
         } else if (
           currentStoredUserData &&
           currentStoredUserData.userId !== decryptedUserId
@@ -153,7 +139,7 @@ const Authentication = () => {
           console.log(
             "Local storage contained data for a different user. Clearing and proceeding with API call."
           );
-          localStorage.removeItem(LOCAL_STORAGE_KEY); // Stale data for a different user
+          localStorage.removeItem(LOCAL_STORAGE_KEY);
         }
       } catch (e) {
         console.warn(
@@ -164,16 +150,15 @@ const Authentication = () => {
       }
     }
 
-    // --- Authenticate with backend API ---
     try {
       setStatusMessage(
         `Authenticating user (${decryptedUserId.substring(0, 8)}...) with backend...`
-      ); // Avoid logging full ID if sensitive
-      const endpoint = `http://10.229.220.15:8000/authenticate-user?user_id=${encodeURIComponent(decryptedUserId)}`;
+      ); 
+      const endpoint = `https://dev-ai.cybergen.com/authenticate-user?user_id=${encodeURIComponent(decryptedUserId)}`;
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { Accept: "application/json" },
-        body: "", // Assuming an empty body is expected by the API
+        body: "", 
       });
 
       if (!response.ok) {
@@ -210,7 +195,7 @@ const Authentication = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [encryptedIdFromUrl, navigate, grantAccess]); // key and keyIV are component constants, not needed in deps
+  }, [encryptedIdFromUrl, navigate, grantAccess]); 
 
   useEffect(() => {
     processAuthentication();
@@ -254,8 +239,6 @@ const Authentication = () => {
           </div>
         )}
         {!isLoading && !error && (
-          // This message will typically only be seen briefly before redirect or if an error occurred but was cleared.
-          // Successful states usually redirect.
           <p className="text-gray-700">{statusMessage}</p>
         )}
       </div>

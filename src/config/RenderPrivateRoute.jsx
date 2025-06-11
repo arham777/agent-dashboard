@@ -4,7 +4,6 @@ import { useAuthStatus } from "../libs/hooks/useAuthToken";
 function RenderPrivateRoute({ element: Component, ...rest }) {
   const { isAuthenticated } = useAuthStatus();
 
-  console.log("RenderPrivateRoute - isAuthenticated:", isAuthenticated);
 
   if (!isAuthenticated) {
     return <Navigate to="/auth/id" replace />;

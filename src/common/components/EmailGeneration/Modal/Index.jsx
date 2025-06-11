@@ -98,11 +98,10 @@ export default function MailSchedulerModal({
       client_name: clientName,
       campaign_objective: campaignObjective,
       target_audience: targetAudience,
-      tone_and_style: toneAndStyle.toLowerCase(), // Send as lowercase
-      // content_focus is NOT sent to /generate-single-email as per API spec
+      tone_and_style: toneAndStyle.toLowerCase(),
     });
     
-    const apiUrl = `http://10.229.220.15:8000/generate-single-email?${queryParams.toString()}`;
+    const apiUrl = `https://dev-ai.cybergen.com/generate-single-email?${queryParams.toString()}`;
 
     // console.log("Payload for email generation:", payload); // Old log for body payload
     console.log("Sending request to generate-single-email with query params:", queryParams.toString());

@@ -22,7 +22,6 @@ function simpleHash(str) {
   return Math.abs(hash);
 }
 
-// Define a palette of colors for dynamic tags
 const dynamicColorPalette = [
   { color: "text-purple-600", bg: "bg-purple-100", border: "border-purple-600" },
   { color: "text-pink-600", bg: "bg-pink-100", border: "border-pink-600" },
@@ -33,7 +32,6 @@ const dynamicColorPalette = [
   { color: "text-lime-600", bg: "bg-lime-100", border: "border-lime-600" },
 ];
 
-// Helper function to format tag labels
 function formatTagLabel(tag) {
   if (!tag || typeof tag !== 'string') return 'Untyped';
   return tag
@@ -42,34 +40,28 @@ function formatTagLabel(tag) {
     .join(' ');
 }
 
-// Helper function to extract client name from various possible locations in the data structure
 function extractClientName(data) {
   if (!data) return null;
-  
-  // Try direct access at different potential locations
   if (typeof data.client_name === 'string') return data.client_name;
   if (typeof data.clientName === 'string') return data.clientName;
   if (typeof data.client === 'string') return data.client;
   
-  // Try nested locations
   if (data.campaign_strategy) {
     if (typeof data.campaign_strategy.client_name === 'string') return data.campaign_strategy.client_name;
     if (typeof data.campaign_strategy.clientName === 'string') return data.campaign_strategy.clientName;
     if (typeof data.campaign_strategy.client === 'string') return data.campaign_strategy.client;
   }
 
-  // Try metadata or other common locations
   if (data.metadata && typeof data.metadata.client_name === 'string') return data.metadata.client_name;
   if (data.metadata && typeof data.metadata.clientName === 'string') return data.metadata.clientName;
   
-  // If we have an emails array with client info in it
   if (data.campaign_strategy && Array.isArray(data.campaign_strategy.emails) && data.campaign_strategy.emails.length > 0) {
     const firstEmail = data.campaign_strategy.emails[0];
     if (typeof firstEmail.client_name === 'string') return firstEmail.client_name;
     if (typeof firstEmail.clientName === 'string') return firstEmail.clientName;
   }
   
-  return null; // No client name found in any expected location
+  return null; 
 }
 
 export default function CalendarResult({
@@ -94,10 +86,8 @@ export default function CalendarResult({
   const location = useLocation();
   const isEmailGenerator = location.pathname === "/email-generator";
 
-  // Get user ID from localStorage instead of hardcoded value
   const [userId, setUserId] = useState(null);
 
-  // Get user ID from localStorage on component mount
   useEffect(() => {
     const storedUser = localStorage.getItem("authenticatedUser");
     let userIdFromStorage = null;
@@ -114,7 +104,7 @@ export default function CalendarResult({
 
   const handleExportEmails = () => {
     if (!processedPosts || processedPosts.length === 0) {
-      alert("No emails to export."); // Or use a toast notification
+      alert("No emails to export."); 
       return;
     }
 
@@ -144,22 +134,21 @@ export default function CalendarResult({
     const rows = processedPosts.map(post => {
       const postDate = new Date(post.post_date);
       const formattedDate = !isNaN(postDate.getTime())
-        ? postDate.toLocaleDateString('en-CA') // Format: YYYY-MM-DD
+        ? postDate.toLocaleDateString('en-CA') 
         : 'Invalid Date';
 
-      // Process body to be single line: replace newlines (\r\n or \n) with a space
       const singleLineBody = post.body ? String(post.body).replace(/\r\n|\r|\n/g, ' ') : '';
 
       return [
         escapeCsvCell(post.id),
         escapeCsvCell(formattedDate),
-        escapeCsvCell(post.subject || post.caption), // Use subject, fallback to caption
-        escapeCsvCell(singleLineBody), // Use the processed single-line body
+        escapeCsvCell(post.subject || post.caption),
+        escapeCsvCell(singleLineBody), 
         escapeCsvCell(post.type),
         escapeCsvCell(post.campaign_objective),
         escapeCsvCell(post.target_audience),
         escapeCsvCell(post.client_name),
-        escapeCsvCell(post.originalApiData?.timing || post.timing || '') // Timing info
+        escapeCsvCell(post.originalApiData?.timing || post.timing || '') 
       ].join(',');
     });
 
@@ -181,14 +170,12 @@ export default function CalendarResult({
     }
   };
 
-  // Debug log to see the actual structure - this will help identify where client_name is stored
   useEffect(() => {
     if (newlyGeneratedCampaign) {
       console.log("newlyGeneratedCampaign structure:", JSON.stringify(newlyGeneratedCampaign, null, 2));
     }
   }, [newlyGeneratedCampaign]);
 
-  // Debug log the companyName prop
   useEffect(() => {
     if (companyName) {
       console.log("CalendarResult received companyName:", companyName);
@@ -197,7 +184,7 @@ export default function CalendarResult({
 
   function transformApiEmailToPost(apiEmail, campaignStartDate, emailIndex, campaignObjective, targetAudience, clientNameFromCampaign) {
     let postDate;
-    const { timing } = apiEmail; // e.g., "Send on June 5, 2025, at 10:00 AM" or "Day 1" or "2025-07-06"
+    const { timing } = apiEmail; 
     const effectiveCampaignStartDate = campaignStartDate || new Date(); // Base for "Day X" or ultimate fallback
 
     if (timing) {
@@ -213,7 +200,6 @@ export default function CalendarResult({
         }
       }
 
-      // If not an ISO format, check for "Send on Month Day, Year" format
       if (!postDate) {
         const specificDateMatch = timing.match(/^Send on (\w+) (\d{1,2}), (\d{4})/i);
         if (specificDateMatch) {
@@ -230,7 +216,6 @@ export default function CalendarResult({
         }
       }
       
-      // If neither ISO nor specific date format, check for "Day X" format
       if (!postDate) {
         const timingLower = timing.toLowerCase();
         if (timingLower.startsWith('day ')) {
@@ -260,8 +245,7 @@ export default function CalendarResult({
       originalApiData: apiEmail,
       campaign_objective: campaignObjective,
       target_audience: targetAudience,
-      // Look for client_name in multiple places
-      client_name: clientNameFromCampaign || companyName || apiEmail.client_name || apiEmail.clientName || 'DefaultClient', // Use companyName as primary fallback
+      client_name: clientNameFromCampaign || companyName || apiEmail.client_name || apiEmail.clientName || 'DefaultClient', 
     };
   }
   
@@ -272,13 +256,10 @@ export default function CalendarResult({
     if (newlyGeneratedCampaign && newlyGeneratedCampaign.campaign_strategy && newlyGeneratedCampaign.campaign_strategy.emails) {
       const campaignStartDateFromEffect = new Date();
       
-      // Extract campaign data
       const { campaign_objective, target_audience } = newlyGeneratedCampaign.campaign_strategy;
       
-      // Extract client name - prioritize companyName prop over extracted name
       let clientNameForEmails = companyName;
       
-      // If companyName prop is empty, try to extract it
       if (!clientNameForEmails) {
         const extractedClientName = extractClientName(newlyGeneratedCampaign);
         console.log("No companyName prop, extracted client name:", extractedClientName);
@@ -311,13 +292,9 @@ export default function CalendarResult({
         ...combinedPosts.filter(p => !newEmailIds.has(p.id) && p.platform === 'Email')
       ];
     } else {
-      // If not a new campaign, ensure we only show email posts if on email generator page,
-      // or retain existing logic for other paths if any.
-      // For this example, assuming email generator path shows only emails.
       combinedPosts = combinedPosts.filter(p => p.platform === 'Email');
     }
     
-    // Debug the first combined post to see if client_name is properly set
     if (combinedPosts.length > 0) {
       console.log("First processed post client_name:", combinedPosts[0].client_name);
     }
@@ -335,7 +312,7 @@ export default function CalendarResult({
         }
       }
     }
-  }, [postData, newlyGeneratedCampaign, isEmailGenerator]); // currentDate removed as per original logic
+  }, [postData, newlyGeneratedCampaign, isEmailGenerator]); 
 
   const handleEmailRecomposed = (originalEmailId, newEmailApiData) => {
     console.log("handleEmailRecomposed called with:", originalEmailId);
@@ -352,13 +329,11 @@ export default function CalendarResult({
       const originalPost = prevPosts[postIndex];
       console.log("Original post found:", originalPost);
       
-      // Extract client name from API response or fall back to original
       const clientNameFromResponse = extractClientName(newEmailApiData) || originalPost.client_name;
 
-      // Default to using newEmailApiData directly, then check for nested structure
       let emailDetailsToUse = newEmailApiData;
-      let campaignObjectiveToUse = newEmailApiData.campaign_objective; // Top-level from API response
-      let targetAudienceToUse = newEmailApiData.target_audience;   // Top-level from API response
+      let campaignObjectiveToUse = newEmailApiData.campaign_objective; 
+      let targetAudienceToUse = newEmailApiData.target_audience;   
 
       if (newEmailApiData.campaign_strategy && 
           Array.isArray(newEmailApiData.campaign_strategy.emails) && 
@@ -367,7 +342,6 @@ export default function CalendarResult({
         emailDetailsToUse = newEmailApiData.campaign_strategy.emails[0];
         console.log("Using nested email details from API response:", emailDetailsToUse);
 
-        // Prefer objective and audience from the campaign_strategy level of the response if available
         if (newEmailApiData.campaign_strategy.campaign_objective) {
           campaignObjectiveToUse = newEmailApiData.campaign_strategy.campaign_objective;
         }
@@ -378,11 +352,10 @@ export default function CalendarResult({
         console.log("Using flat email details from API response (or direct object if not API like structure):", emailDetailsToUse);
       }
       
-      // Create the recomposed email, keeping original date and ID
       const recomposedEmail = {
         ...originalPost,
-        id: originalPost.id, // Ensure ID is preserved
-        post_date: originalPost.post_date, // Preserve the original date
+        id: originalPost.id,
+        post_date: originalPost.post_date, 
         
         caption: emailDetailsToUse.subject_line || emailDetailsToUse.tag || 'Recomposed Email',
         subject: emailDetailsToUse.subject_line || '',
@@ -393,8 +366,7 @@ export default function CalendarResult({
         target_audience: targetAudienceToUse || originalPost.target_audience,
         client_name: clientNameFromResponse, 
         
-        originalApiData: newEmailApiData, // Store the full raw response for reference
-        // Preserve any timing information from original post, as the slot in calendar is fixed
+        originalApiData: newEmailApiData, 
         timing: originalPost.timing, 
       };
 
@@ -407,29 +379,25 @@ export default function CalendarResult({
       return updatedPosts;
     });
     
-    // Close modal. The onPostCreated() call is removed to prevent immediate overwrite 
-    // of the locally recomposed email by a fetch from the server.
-    // The user will see the recomposed version immediately upon re-clicking the cell.
-    // A separate mechanism would be needed to persist this change to the backend.
+    
     setIsEmailDetailsModalOpen(false);
   };
 
   const getTagStyle = (type) => {
     if (!type) return { label: 'Untyped', color: "text-gray-700", bg: "bg-gray-100", border: "border-gray-400" };
 
-    // Use formatted label for specific cases as well, to ensure consistency if raw values are accidentally passed
     switch (type) {
       case 'Initial Mail': 
-      case 'initial_mail': // Handle raw value if it slips through
+      case 'initial_mail': 
         return { label: "Initial Mail", color: "text-[#007BFF]", bg: "bg-[#007BFF1A]", border: "border-[#007BFF]" };
       case 'Follow Up Mail': 
-      case 'follow_up_mail': // Handle raw value
+      case 'follow_up_mail': 
         return { label: "Follow Up Mail", color: "text-[#FFA500]", bg: "bg-[#FFA5001A]", border: "border-[#FFA500]" };
       case 'Confirmation Mail': 
-      case 'confirmation_mail': // Handle raw value
+      case 'confirmation_mail': 
         return { label: "Confirmation Mail", color: "text-[#28A745]", bg: "bg-[#28A7451A]", border: "border-[#28A745]" };
       case 'Notification Mail': 
-      case 'notification_mail': // Handle raw value
+      case 'notification_mail': 
         return { label: "Notification Mail", color: "text-[#DC3545]", bg: "bg-[#DC35451A]", border: "border-[#DC3545]" };
       default: {
         const hash = simpleHash(type);
@@ -523,17 +491,14 @@ export default function CalendarResult({
     );
   };
 
-  // Modify clientNameToPass logic to prioritize companyName prop
   let clientNameToPass;
   if (companyName) {
-    // If companyName prop is provided, it takes highest priority
     clientNameToPass = companyName;
   } else if (selectedEmailData && selectedEmailData.client_name) {
-    // Otherwise fall back to the existing logic
     clientNameToPass = selectedEmailData.client_name;
   } else if (selectedEmailData) {
     console.warn("client_name not found on selectedEmailData. ID:", selectedEmailData.id);
-    clientNameToPass = "Client"; // More friendly fallback
+    clientNameToPass = "Client"; 
   } else {
     clientNameToPass = "Client";
   }
@@ -648,11 +613,8 @@ export default function CalendarResult({
                   className={`h-[100px] p-1 text-left align-top ${cellBorderClass}`}
                   onClick={() => {
                     if(inMonth) {
-                      // Logic for opening modal:
-                      // If there are entries, use data from the first entry.
-                      // If no entries, selectedEmailData will be based on a new email template or be null.
                       const firstEntry = entriesForCell && entriesForCell.length > 0 ? entriesForCell[0] : null;
-                      setSelectedEmailData(firstEntry); // This could be null if cell is empty, modal should handle it
+                      setSelectedEmailData(firstEntry); 
                       setSelectedDateForModal(date);
                       setIsEmailDetailsModalOpen(true);
                     }
@@ -694,7 +656,7 @@ export default function CalendarResult({
           scheduledPosts={[]}
           selectedDate={selectedDateForModal}
           onPostCreated={() => {
-            setIsAuthModalOpen(false);
+            // setIsAuthModalOpen(false);
             if (onPostCreated) onPostCreated();
           }}
         />
@@ -707,7 +669,7 @@ export default function CalendarResult({
           selectedDate={selectedDateForModal}
           scheduledEmailsForDate={selectedEmailData ? [selectedEmailData] : []}
           userId={userId}
-          clientName={clientNameToPass} // Now more robustly determined with companyName priority
+          clientName={clientNameToPass} 
           onEmailRecomposed={handleEmailRecomposed}
           submittedApiContentFocus={submittedApiContentFocus}
         />

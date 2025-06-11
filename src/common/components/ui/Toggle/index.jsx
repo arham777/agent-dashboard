@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import linkedin from "../../../../assets/icons/linkedin.svg";
 import instagram from "../../../../assets/icons/instagram.svg";
 import twitter from "../../../../assets/icons/twitter.svg";
@@ -25,6 +25,10 @@ export default function AuthModal({
   );
   const [categories] = useState(defaultCategories);
   const [loading, setLoading] = useState(false);
+
+  const [campaigns, setCampaigns] = useState([]);
+  const [selectedCampaignId, setSelectedCampaignId] = useState("");
+
   const formattedDate = selectedDate
     ? selectedDate.toLocaleDateString("en-GB", {
         day: "2-digit",
@@ -38,7 +42,35 @@ export default function AuthModal({
     day: "2-digit",
     year: "numeric",
   });
+  useEffect(() => {
+    const fetchCampaigns = async () => {
+      const storedUser = localStorage.getItem("authenticatedUser");
+      const userId = storedUser ? JSON.parse(storedUser).userId : null;
 
+      if (!userId) {
+        return;
+      }
+
+      try {
+        const res = await fetch(
+          `https://dev-ai.cybergen.com/calendars?user_id=${userId}`,
+          { headers: { accept: "application/json" } }
+        );
+        if (!res.ok) throw new Error("Failed to fetch campaigns");
+
+        const data = await res.json();
+        const validCampaigns = data.filter(
+          (c) => c.campaign_name && c.campaign_name.trim() !== ""
+        );
+        setCampaigns(validCampaigns);
+      } catch (err) {
+        console.error("Failed to fetch campaigns:", err);
+        toast.error("Could not load campaign history.");
+      }
+    };
+
+    fetchCampaigns();
+  }, []);
   const handleGenerate = async () => {
     setLoading(true);
     const storedUser = localStorage.getItem("authenticatedUser");
@@ -67,23 +99,24 @@ export default function AuthModal({
       post_type: postType.toLowerCase(),
       post_date: formattedDateinUs,
       user_id: userId,
+      campaign_id: selectedCampaignId,
     });
 
     try {
       const res = await fetch(
-        `http://10.229.220.15:8000/New-Post?${query.toString()}`,
+        `https://dev-ai.cybergen.com/New-Post?${query.toString()}`,
         {
           method: "GET",
           headers: { accept: "application/json" },
         }
       );
-
+      console.log("API Response:", res);
       if (!res.ok) throw new Error("API call failed");
 
       const data = await res.json();
       if (data) {
         onClose();
-        onPostCreated();
+        // onPostCreated();
         toast.success(" Post generated successfully!");
       }
     } catch (err) {
@@ -100,10 +133,13 @@ export default function AuthModal({
       ? JSON.parse(storedUser).userId ||
         JSON.parse(storedUser).data?.staffid?.toString()
       : null;
+
     if (!userId) {
       toast.error("User ID not found. Please log in again.");
       return;
     }
+
+   
     try {
       const input =
         `caption : "${post.caption}" ` +
@@ -122,21 +158,21 @@ export default function AuthModal({
       });
 
       const res = await fetch(
-        `http://10.229.220.15:8000/Re-Generate?${params.toString()}`,
+        `https://dev-ai.cybergen.com/Re-Generate?${params.toString()}`,
         { headers: { accept: "application/json" } }
       );
+
       if (!res.ok) throw new Error(res.statusText);
       await res.json();
 
       toast.success("Post regenerated successfully!");
-      onPostCreated?.();
+      // onPostCreated?.();
       onClose();
     } catch (err) {
       console.error("Regeneration error:", err);
       toast.error("Failed to regenerate post");
     }
   };
-
   return (
     <div className="fixed inset-0 z-50 flex justify-center items-center bg-black/40 px-4">
       <div className="  w-full lg:w-[40%] bg-white rounded-lg shadow-xl overflow-hidden relative">
@@ -217,6 +253,7 @@ export default function AuthModal({
                       })}
                     </div>
                     <span>{post.caption}</span>
+                    <span>{post.slide}</span>
                   </div>
                   <button
                     onClick={() => handleRegenerateScheduled(post)}
@@ -233,6 +270,31 @@ export default function AuthModal({
           </div>
         ) : (
           <div className=" max-h-[500px] overflow-y-auto p-6 space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-1">
+                Select Campaign
+              </h3>
+              <div className="relative">
+                <select
+                  value={selectedCampaignId}
+                  onChange={(e) => setSelectedCampaignId(e.target.value)}
+                  className="appearance-none w-full border border-gray-300 text-sm rounded-md px-3 py-2 text-gray-600"
+                >
+                  <option value="">Select an existing campaign</option>
+                  {campaigns.map((campaign) => (
+                    <option
+                      key={campaign.calendar_id}
+                      value={campaign.calendar_id}
+                    >
+                      {campaign.campaign_name}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[#344054]">
+                  <img src={dropdown} alt="" className="w-[16px] h-[16px]" />
+                </div>
+              </div>
+            </div>
             <div>
               <h3 className="text-sm font-semibold text-gray-700 mb-1">
                 Platform
