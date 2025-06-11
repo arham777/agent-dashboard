@@ -57,14 +57,7 @@ export default function MailSchedulerModal({
 
   const displayScheduledEmail = scheduledEmailsForDate.length > 0
     ? scheduledEmailsForDate[0]
-    : { 
-        id: null,
-        type: 'Initial Mail',
-        subject: 'Master UI/UX Design — Free Online Workshop This Month!',
-        body: `Hi [First Name],\n\nAre you ready to level up your design skills?\n\nWe're excited to invite you to our Free Online UI/UX Design Workshop, where you'll learn the essentials of:\n\n✅ Design thinking\n✅ Wireframing techniques\n✅ Prototyping tools\n✅ Building design systems (Components & Variants in Figma)\n\n📅 Date: [Insert Date]\n⏰ Time: [Insert Time]\n📍 Platform: Zoom (Link after registration)\n\n⭐ Bonus: Participants will receive access to our design template pack!`,
-        platforms: ['Email'],
-        caption: 'Dummy scheduled email caption',
-      };
+    : null;
 
   useEffect(() => {
     if (selectedTab === "compose") {
@@ -273,30 +266,36 @@ export default function MailSchedulerModal({
                 </div>
 
                 {selectedTab === "scheduled" && (
-                  <div className="space-y-4 px-2">
-                    <span className="inline-block border border-[#007BFF] text-[#007BFF] text-sm font-semibold px-2.5 py-1.5 rounded-full">
-                      <span className="text-md">•</span> {formatTagLabel(displayScheduledEmail.type)}
-                    </span>
-                  <div className="border p-3 rounded-sm border-gray-200">
-                    <div>
-                      <p className="font-semibold text-[#344054] mb-3 text-sm">Subject Line:</p>
-                      <p className="text-base text-sm mb-3 text-[#344054]">
-                        {displayScheduledEmail.subject}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="font-semibold text-[#344054] mb-3 text-sm">Email Body:</p>
-                      <div className="mt-1 space-y-1 text-[#344054]">
-                        {renderEmailBodyContent(displayScheduledEmail.body)}
+                  displayScheduledEmail ? (
+                    <div className="space-y-4 px-2">
+                      <span className="inline-block border border-[#007BFF] text-[#007BFF] text-sm font-semibold px-2.5 py-1.5 rounded-full">
+                        <span className="text-md">•</span> {formatTagLabel(displayScheduledEmail.type)}
+                      </span>
+                    <div className="border p-3 rounded-sm border-gray-200">
+                      <div>
+                        <p className="font-semibold text-[#344054] mb-3 text-sm">Subject Line:</p>
+                        <p className="text-base text-sm mb-3 text-[#344054]">
+                          {displayScheduledEmail.subject}
+                        </p>
                       </div>
-                    </div>
-                    </div>
+                      <div>
+                        <p className="font-semibold text-[#344054] mb-3 text-sm">Email Body:</p>
+                        <div className="mt-1 space-y-1 text-[#344054]">
+                          {renderEmailBodyContent(displayScheduledEmail.body)}
+                        </div>
+                      </div>
+                      </div>
 
-                      <button className="px-6 w-full  py-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition duration-200 flex justify-center items-center gap-2">
-                        <RegenerateIcon />
-                        Regenerate
-                      </button>
-                  </div>
+                        <button className="px-6 w-full  py-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition duration-200 flex justify-center items-center gap-2">
+                          <RegenerateIcon />
+                          Regenerate
+                        </button>
+                    </div>
+                  ) : (
+                    <div className="text-center py-10">
+                      <p className="text-gray-500">No email scheduled for this date.</p>
+                    </div>
+                  )
                 )}
 
                 {selectedTab === "compose" && (
