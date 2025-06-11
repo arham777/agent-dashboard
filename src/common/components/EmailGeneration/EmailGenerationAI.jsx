@@ -64,10 +64,12 @@ export default function EmailGenerationAI() {
       if (data && data.campaigns && Array.isArray(data.campaigns)) {
         setAllCampaigns(data.campaigns);
         
-        // Find the campaign with the highest ID
-        let highestIdCampaign = data.campaigns.reduce(
+        const namedCampaigns = data.campaigns.filter(c => c.campaign?.campaign_strategy?.campaign_name);
+        
+        // Find the campaign with the highest ID from the named campaigns
+        let highestIdCampaign = namedCampaigns.reduce(
           (highest, current) => (current.id > highest.id ? current : highest),
-          { id: 0 }
+          { id: 0 } // Start with a dummy campaign
         );
         
         // If we have campaigns, set the selected ID to the highest one and prepare its data
@@ -302,7 +304,9 @@ export default function EmailGenerationAI() {
               
               {showHistoryDropdown && allCampaigns.length > 0 && (
                 <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                  {allCampaigns.map((campaign) => (
+                  {allCampaigns
+                    .filter(campaign => campaign.campaign?.campaign_strategy?.campaign_name)
+                    .map((campaign) => (
                     <div 
                       key={campaign.id}
                       onClick={() => handleCampaignSelect(campaign)}
