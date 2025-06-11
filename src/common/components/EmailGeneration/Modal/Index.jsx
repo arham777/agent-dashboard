@@ -46,9 +46,9 @@ export default function MailSchedulerModal({
   onEmailRecomposed,
   userId,
   clientName,
-  submittedApiContentFocus
 }) {
   const [selectedTab, setSelectedTab] = useState("scheduled"); 
+  const [isRegenerating, setIsRegenerating] = useState(false);
   
   const [campaignObjective, setCampaignObjective] = useState("Product Promotion");
   const [targetAudience, setTargetAudience] = useState("");
@@ -143,6 +143,58 @@ export default function MailSchedulerModal({
       // You could add a toast notification here if you have a toast library
     } finally {
       setIsComposing(false);
+    }
+  };
+
+  const handleRegenerateEmail = async () => {
+    if (!displayScheduledEmail) {
+      alert("Error: No email data available to regenerate.");
+      console.error("Cannot regenerate: displayScheduledEmail is null or undefined.");
+      return;
+    }
+
+    // Using dynamic IDs from the email object, assuming 'campaign_id' and 'email_number' are present.
+    const campaignId = displayScheduledEmail.campaign_id;
+    const emailNumber = displayScheduledEmail.email_number;
+    const emailUniqueId = displayScheduledEmail.id; // The email's own unique ID for the UI callback.
+
+    if (campaignId === undefined || emailNumber === undefined) {
+      alert("Error: Missing campaign ID or email sequence number. Cannot regenerate.");
+      console.error("Regeneration failed: Missing data from email object", { 
+        "campaign_id": campaignId, 
+        "email_number": emailNumber 
+      });
+      return;
+    }
+
+    setIsRegenerating(true);
+    try {
+      // Use dynamic values from the selected email.
+      const apiUrl = `http://10.229.220.15:8000/Re-Generate-Email-?id=${campaignId}&email_id=${emailNumber}`;
+      console.log("Making API call to regenerate email:", apiUrl);
+      
+      const response = await fetch(apiUrl, { method: 'GET' });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const newEmailData = await response.json(); 
+      console.log("Successfully regenerated email, response:", newEmailData);
+
+      if (onEmailRecomposed) {
+        onEmailRecomposed(emailUniqueId, newEmailData);
+      } else {
+        console.error("onEmailRecomposed callback is not available to update the UI.");
+      }
+      
+      onClose();
+
+    } catch (error) {
+      console.error("Failed to regenerate email:", error);
+      alert(`Error: ${error.message}`);
+    } finally {
+      setIsRegenerating(false);
     }
   };
 
@@ -268,10 +320,22 @@ export default function MailSchedulerModal({
                 {selectedTab === "scheduled" && (
                   displayScheduledEmail ? (
                     <div className="space-y-4 px-2">
-                      <span className="inline-block border border-[#007BFF] text-[#007BFF] text-sm font-semibold px-2.5 py-1.5 rounded-full">
-                        <span className="text-md">•</span> {formatTagLabel(displayScheduledEmail.type)}
-                      </span>
-                    <div className="border p-3 rounded-sm border-gray-200">
+                      <div className="flex items-center gap-4 flex-wrap">
+                        <span className="inline-block border border-[#007BFF] text-[#007BFF] text-sm font-semibold px-2.5 py-1.5 rounded-full">
+                          <span className="text-md">•</span> {formatTagLabel(displayScheduledEmail.type)}
+                        </span>
+                        {typeof displayScheduledEmail.campaign_id !== 'undefined' && (
+                          <span className="text-sm font-semibold text-gray-700">
+                            Campaign: {displayScheduledEmail.campaign_id}
+                          </span>
+                        )}
+                        {typeof displayScheduledEmail.email_number !== 'undefined' && (
+                          <span className="text-sm font-semibold text-gray-700">
+                            Email: #{displayScheduledEmail.email_number}
+                          </span>
+                        )}
+                      </div>
+                    <div className="border p-3 mt-4 rounded-sm border-gray-200">
                       <div>
                         <p className="font-semibold text-[#344054] mb-3 text-sm">Subject Line:</p>
                         <p className="text-base text-sm mb-3 text-[#344054]">
@@ -286,9 +350,25 @@ export default function MailSchedulerModal({
                       </div>
                       </div>
 
-                        <button className="px-6 w-full  py-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition duration-200 flex justify-center items-center gap-2">
-                          <RegenerateIcon />
-                          Regenerate
+                        <button 
+                          onClick={handleRegenerateEmail}
+                          disabled={isRegenerating}
+                          className="px-6 w-full py-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition duration-200 flex justify-center items-center gap-2 disabled:opacity-50"
+                        >
+                          {isRegenerating ? (
+                            <span className="flex items-center justify-center">
+                              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Regenerating...
+                            </span>
+                          ) : (
+                            <>
+                              <RegenerateIcon />
+                              Regenerate
+                            </>
+                          )}
                         </button>
                     </div>
                   ) : (

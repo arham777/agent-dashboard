@@ -80,7 +80,7 @@ export default function EmailGenerationAI() {
               highestIdCampaign.campaign.campaign_strategy.emails) {
             
             // Set the newlyGeneratedCampaign with the campaign data for display
-            setNewlyGeneratedCampaign(highestIdCampaign.campaign);
+            setNewlyGeneratedCampaign({ ...highestIdCampaign.campaign, id: highestIdCampaign.id });
             setPostData(highestIdCampaign.campaign.campaign_strategy.emails);
             
             // Extract company name if available
@@ -128,7 +128,8 @@ export default function EmailGenerationAI() {
         campaign.campaign.campaign_strategy && 
         campaign.campaign.campaign_strategy.emails) {
       
-      setNewlyGeneratedCampaign(campaign.campaign);
+      // Pass the whole object, including the ID
+      setNewlyGeneratedCampaign({ ...campaign.campaign, id: campaign.id });
       setPostData(campaign.campaign.campaign_strategy.emails);
       
       // Extract company name if available
