@@ -27,6 +27,7 @@ export default function ScheduleForm({
   postType,
   category,
   onGenerateSuccess,
+  campaignName ,
 }) {
   const [month, setMonth] = useState("January");
   const [year, setYear] = useState(2025);
@@ -67,11 +68,12 @@ export default function ScheduleForm({
       frequency,
       duration: mode.toLowerCase() === "monthly" ? "month" : "weeks",
       user_id: userId,
+      campaign_name: campaignName,
     });
 
     try {
       const res = await fetch(
-        `http://10.229.220.15:8000/agent_on---?${query}`,
+        `https://dev-ai.cybergen.com/agent_on---?${query}`,
         {
           method: "GET",
           headers: {

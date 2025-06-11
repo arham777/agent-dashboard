@@ -14,6 +14,7 @@ export default function MonthlyPostResults({ posts = [], onPostCreated }) {
   }, {});
 
   async function handleRegenerate(post) {
+    
     try {
       const input =
         `caption : "${post.caption}" ` +
@@ -29,10 +30,11 @@ export default function MonthlyPostResults({ posts = [], onPostCreated }) {
         input,
         user_id: post.user_id.toString(),
         post_id: post.id.toString(),
+         
       });
 
       const res = await fetch(
-        `http://10.229.220.15:8000/Re-Generate?${params.toString()}`,
+        `https://dev-ai.cybergen.com/Re-Generate?${params.toString()}`,
         { headers: { accept: "application/json" } }
       );
       if (!res.ok) throw new Error(res.statusText);
@@ -40,7 +42,7 @@ export default function MonthlyPostResults({ posts = [], onPostCreated }) {
       const data = await res.json();
       console.log("Regenerated:", data);
       toast.success("Post regenerated successfully!");
-      onPostCreated();
+      // onPostCreated();
     } catch (err) {
       console.error("Regeneration error:", err);
       toast.error("Failed to regenerate post");

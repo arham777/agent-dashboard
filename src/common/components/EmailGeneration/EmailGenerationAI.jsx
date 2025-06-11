@@ -13,10 +13,10 @@ export default function EmailGenerationAI() {
   const [targetAudience, setTargetAudience] = useState("");
   const [contentFocus, setContentFocus] = useState("");
   const [toneAndStyle, setToneAndStyle] = useState("");
-  const [numEmails, setNumEmails] = useState("3"); // Changed to string to handle empty input
+  const [numEmails, setNumEmails] = useState("3");
   const [newlyGeneratedCampaign, setNewlyGeneratedCampaign] = useState(null);
   const [submittedApiContentFocus, setSubmittedApiContentFocus] = useState("");
-  // New state for campaigns history
+  
   const [allCampaigns, setAllCampaigns] = useState([]);
   const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
   const [selectedCampaignId, setSelectedCampaignId] = useState(null);
@@ -33,69 +33,61 @@ export default function EmailGenerationAI() {
   const fetchPosts = useCallback(async () => {
     setLoading(true);
     try {
-      // Attempt to get user_id from localStorage as before for fetchPosts
       const storedUser = localStorage.getItem("authenticatedUser");
       let userIdForFetch = null;
       if (storedUser) {
         try {
-            const parsedUser = JSON.parse(storedUser);
-            userIdForFetch = parsedUser.userId || parsedUser.data?.staffid?.toString();
+          const parsedUser = JSON.parse(storedUser);
+          userIdForFetch =
+            parsedUser.userId || parsedUser.data?.staffid?.toString();
         } catch (e) {
-            console.error("Failed to parse stored user for fetchPosts:", e);
+          console.error("Failed to parse stored user for fetchPosts:", e);
         }
       }
       if (!userIdForFetch) {
-        // Fallback or error if needed for fetchPosts, using a default if not critical
-        console.warn("User ID not found for fetchPosts, using default or proceeding without.");
-        // If fetchPosts absolutely needs a user_id and none is found, you might want to toast.error or return.
-        // For now, let it try to fetch if the endpoint supports it or if it's not critical.
+        console.warn(
+          "User ID not found for fetchPosts, using default or proceeding without."
+        );
       }
-      
-      // Use the new endpoint for fetching campaigns
+
       const res = await fetch(
-        `http://10.229.220.15:8000/Emails/${userIdForFetch}`
+        `https://dev-ai.cybergen.com/Emails/${userIdForFetch}`
       );
-      
+
       if (!res.ok) throw new Error("Failed to fetch campaigns");
-      
+
       const data = await res.json();
-      
-      // Store all campaigns for the dropdown
+
       if (data && data.campaigns && Array.isArray(data.campaigns)) {
         setAllCampaigns(data.campaigns);
-        
-        const namedCampaigns = data.campaigns.filter(c => c.campaign?.campaign_strategy?.campaign_name);
-        
-        // Find the campaign with the highest ID from the named campaigns
-        let highestIdCampaign = namedCampaigns.reduce(
+
+        let highestIdCampaign = data.campaigns.reduce(
           (highest, current) => (current.id > highest.id ? current : highest),
-          { id: 0 } // Start with a dummy campaign
+          { id: 0 }
         );
-        
-        // If we have campaigns, set the selected ID to the highest one and prepare its data
+
         if (highestIdCampaign && highestIdCampaign.id > 0) {
           setSelectedCampaignId(highestIdCampaign.id);
-          
-          // Transform the campaign data to match expected format for CalendarResult
-          if (highestIdCampaign.campaign && 
-              highestIdCampaign.campaign.campaign_strategy && 
-              highestIdCampaign.campaign.campaign_strategy.emails) {
-            
-            // Set the newlyGeneratedCampaign with the campaign data for display
-            setNewlyGeneratedCampaign({ ...highestIdCampaign.campaign, id: highestIdCampaign.id });
+
+          if (
+            highestIdCampaign.campaign &&
+            highestIdCampaign.campaign.campaign_strategy &&
+            highestIdCampaign.campaign.campaign_strategy.emails
+          ) {
+            setNewlyGeneratedCampaign(highestIdCampaign.campaign);
             setPostData(highestIdCampaign.campaign.campaign_strategy.emails);
-            
-            // Extract company name if available
+
             if (highestIdCampaign.campaign.campaign_strategy.campaign_name) {
-              setCompanyName(highestIdCampaign.campaign.campaign_strategy.campaign_name);
+              setCompanyName(
+                highestIdCampaign.campaign.campaign_strategy.campaign_name
+              );
             }
-            
-            // Extract content focus
+
             if (highestIdCampaign.campaign.campaign_strategy.content_focus) {
-              const apiContentFocus = highestIdCampaign.campaign.campaign_strategy.content_focus;
+              const apiContentFocus =
+                highestIdCampaign.campaign.campaign_strategy.content_focus;
               setSubmittedApiContentFocus(apiContentFocus);
-              
-              // Convert API content focus to UI format
+
               if (apiContentFocus === "complete_campaign_sequence") {
                 setContentFocus("Complete campaign sequence");
               } else if (apiContentFocus === "single_email") {
@@ -119,32 +111,28 @@ export default function EmailGenerationAI() {
   useEffect(() => {
     fetchPosts();
   }, [fetchPosts]);
-  
-  // Function to handle campaign selection from dropdown
+
   const handleCampaignSelect = (campaign) => {
     setSelectedCampaignId(campaign.id);
     setShowHistoryDropdown(false);
-    
-    // Transform the selected campaign data for display
-    if (campaign.campaign && 
-        campaign.campaign.campaign_strategy && 
-        campaign.campaign.campaign_strategy.emails) {
-      
-      // Pass the whole object, including the ID
-      setNewlyGeneratedCampaign({ ...campaign.campaign, id: campaign.id });
+
+    if (
+      campaign.campaign &&
+      campaign.campaign.campaign_strategy &&
+      campaign.campaign.campaign_strategy.emails
+    ) {
+      setNewlyGeneratedCampaign(campaign.campaign);
       setPostData(campaign.campaign.campaign_strategy.emails);
-      
-      // Extract company name if available
+
       if (campaign.campaign.campaign_strategy.campaign_name) {
         setCompanyName(campaign.campaign.campaign_strategy.campaign_name);
       }
-      
-      // Extract content focus
+
       if (campaign.campaign.campaign_strategy.content_focus) {
-        const apiContentFocus = campaign.campaign.campaign_strategy.content_focus;
+        const apiContentFocus =
+          campaign.campaign.campaign_strategy.content_focus;
         setSubmittedApiContentFocus(apiContentFocus);
-        
-        // Convert API content focus to UI format
+
         if (apiContentFocus === "complete_campaign_sequence") {
           setContentFocus("Complete campaign sequence");
         } else if (apiContentFocus === "single_email") {
@@ -155,7 +143,13 @@ export default function EmailGenerationAI() {
   };
 
   const handleSubmit = async () => {
-    if (!companyName || !companyObjective || !targetAudience || !contentFocus || !toneAndStyle) {
+    if (
+      !companyName ||
+      !companyObjective ||
+      !targetAudience ||
+      !contentFocus ||
+      !toneAndStyle
+    ) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -167,14 +161,19 @@ export default function EmailGenerationAI() {
       apiContentFocus = "complete_campaign_sequence";
     } else if (lowerCaseContentFocus === "single mail") {
       apiContentFocus = "single_email";
-    } else if (lowerCaseContentFocus === "newsletter" || lowerCaseContentFocus === "promotional email") {
-      toast.error(`"${contentFocus}" is not a supported content focus. Please select "Complete campaign sequence" or "Single mail".`);
+    } else if (
+      lowerCaseContentFocus === "newsletter" ||
+      lowerCaseContentFocus === "promotional email"
+    ) {
+      toast.error(
+        `"${contentFocus}" is not a supported content focus. Please select "Complete campaign sequence" or "Single mail".`
+      );
       return;
     } else {
       toast.error("Invalid content focus selected. Please try again.");
       return;
     }
-    setSubmittedApiContentFocus(apiContentFocus); // Store the API-ready content focus
+    setSubmittedApiContentFocus(apiContentFocus);
 
     if (contentFocus === "Complete campaign sequence") {
       const emailCount = parseInt(numEmails);
@@ -190,19 +189,21 @@ export default function EmailGenerationAI() {
 
     setSubmitting(true);
     try {
-      // Get user_id from localStorage, similar to fetchPosts
       const storedUser = localStorage.getItem("authenticatedUser");
       let userIdForCampaign = null;
       if (storedUser) {
         try {
-            const parsedUser = JSON.parse(storedUser);
-            userIdForCampaign = parsedUser.userId || parsedUser.data?.staffid?.toString();
+          const parsedUser = JSON.parse(storedUser);
+          userIdForCampaign =
+            parsedUser.userId || parsedUser.data?.staffid?.toString();
         } catch (e) {
-            console.error("Failed to parse stored user for campaign generation:", e);
+          console.error(
+            "Failed to parse stored user for campaign generation:",
+            e
+          );
         }
       }
-      
-      // If userId couldn't be retrieved, show error and return
+
       if (!userIdForCampaign) {
         toast.error("User ID not found. Please log in again.");
         setSubmitting(false);
@@ -210,49 +211,64 @@ export default function EmailGenerationAI() {
       }
 
       const formData = new URLSearchParams();
-      formData.append('user_id', userIdForCampaign);
-      formData.append('client_name', companyName);
-      formData.append('campaign_objective', companyObjective);
-      formData.append('target_audience', targetAudience);
-      formData.append('content_focus', apiContentFocus);
-      formData.append('num_emails', contentFocus === "Complete campaign sequence" ? parseInt(numEmails) : 1);
-      
+      formData.append("user_id", userIdForCampaign);
+      formData.append("client_name", companyName);
+      formData.append("campaign_objective", companyObjective);
+      formData.append("target_audience", targetAudience);
+      formData.append("content_focus", apiContentFocus);
+      formData.append(
+        "num_emails",
+        contentFocus === "Complete campaign sequence" ? parseInt(numEmails) : 1
+      );
+
       if (toneAndStyle) {
-        formData.append('tone_and_style', toneAndStyle.toLowerCase());
+        formData.append("tone_and_style", toneAndStyle.toLowerCase());
       }
 
-      console.log('Sending form data to /generate-campaign:', formData.toString());
+      console.log(
+        "Sending form data to /generate-campaign:",
+        formData.toString()
+      );
 
-      const apiUrl = 'http://10.229.220.15:8000/generate-campaign'; // URL without query params
+      const apiUrl = "https://dev-ai.cybergen.com/generate-campaign";
 
       const response = await fetch(apiUrl, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+          "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: formData // Send URLSearchParams object directly
+        body: formData,
       });
-      
-      const responseBody = await response.json(); // Always try to parse JSON
+
+      const responseBody = await response.json();
 
       if (!response.ok) {
         let errorMessage = `Failed to generate campaign (HTTP ${response.status})`;
-        // Log the raw response body for 422 or other errors for better debugging
-        console.error('Error response body:', responseBody);
-        // Try to extract a more specific message from known fields
-        errorMessage = responseBody.detail || responseBody.message || responseBody.error || JSON.stringify(responseBody) || errorMessage;
-        if (response.status === 422 && typeof responseBody.detail === 'string') {
-          // If detail is a string from 422, use it directly
-           errorMessage = responseBody.detail;
-        } else if (response.status === 422 && Array.isArray(responseBody.detail)) {
-          // If detail is an array (FastAPI validation errors), format it
-          errorMessage = responseBody.detail.map(err => `${err.loc.join('.')} - ${err.msg}`).join("; ");
+        console.error("Error response body:", responseBody);
+        errorMessage =
+          responseBody.detail ||
+          responseBody.message ||
+          responseBody.error ||
+          JSON.stringify(responseBody) ||
+          errorMessage;
+        if (
+          response.status === 422 &&
+          typeof responseBody.detail === "string"
+        ) {
+          errorMessage = responseBody.detail;
+        } else if (
+          response.status === 422 &&
+          Array.isArray(responseBody.detail)
+        ) {
+          errorMessage = responseBody.detail
+            .map((err) => `${err.loc.join(".")} - ${err.msg}`)
+            .join("; ");
         }
         throw new Error(errorMessage);
       }
 
       console.log("Successfully generated campaign data:", responseBody);
-      
+
       let newCalendarItems = [];
       if (responseBody && Array.isArray(responseBody.emails)) {
         newCalendarItems = responseBody.emails;
@@ -261,21 +277,23 @@ export default function EmailGenerationAI() {
       } else if (Array.isArray(responseBody)) {
         newCalendarItems = responseBody;
       } else {
-        console.warn("Generated campaign data from /generate-campaign is not in a recognized array format (e.g., response.emails, response.posts, or response itself being an array). The calendar might appear empty or not update as expected with only the new campaign.", responseBody);
-        // Defaulting to an empty array if the structure is not recognized,
-        // to ensure only new (and correctly formatted) data is shown.
+        console.warn(
+          "Generated campaign data from /generate-campaign is not in a recognized array format (e.g., response.emails, response.posts, or response itself being an array). The calendar might appear empty or not update as expected with only the new campaign.",
+          responseBody
+        );
         newCalendarItems = [];
       }
-      
-      setPostData(newCalendarItems); // Update postData to show ONLY the newly generated items
-      setNewlyGeneratedCampaign(responseBody); // Store the full response, might be used by CalendarResult or other UI elements
+
+      setPostData(newCalendarItems);
+      setNewlyGeneratedCampaign(responseBody);
       toast.success("Campaign generated successfully!");
-      
-      // Refresh campaigns to include the newly created one
+
       fetchPosts();
     } catch (error) {
-      console.error('Error details:', error);
-      toast.error(error.message || "Failed to generate campaign. Please try again.");
+      console.error("Error details:", error);
+      toast.error(
+        error.message || "Failed to generate campaign. Please try again."
+      );
     } finally {
       setSubmitting(false);
     }
@@ -289,42 +307,44 @@ export default function EmailGenerationAI() {
         </h2>
       </div>
       <div className="flex flex-col md:flex-row gap-4 py-2">
-        {/* Left Panel */}
         <div className="w-full md:w-[40%] bg-white rounded-xl p-4">
           <div className="flex flex-col gap-4">
-            {/* History Dropdown Button */}
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setShowHistoryDropdown(!showHistoryDropdown)}
                 className="w-full flex justify-between items-center px-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-md hover:bg-gray-100"
               >
                 <span>Campaign History</span>
-                <IoChevronDownOutline className={`transition-transform ${showHistoryDropdown ? 'rotate-180' : ''}`} />
+                <IoChevronDownOutline
+                  className={`transition-transform ${showHistoryDropdown ? "rotate-180" : ""}`}
+                />
               </button>
-              
+
               {showHistoryDropdown && allCampaigns.length > 0 && (
                 <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                  {allCampaigns
-                    .filter(campaign => campaign.campaign?.campaign_strategy?.campaign_name)
-                    .map((campaign) => (
-                    <div 
+                  {allCampaigns.map((campaign) => (
+                    <div
                       key={campaign.id}
                       onClick={() => handleCampaignSelect(campaign)}
-                      className={`px-4 py-2 text-sm cursor-pointer hover:bg-gray-100 ${selectedCampaignId === campaign.id ? 'bg-blue-50 text-blue-600' : ''}`}
+                      className={`px-4 py-2 text-sm cursor-pointer hover:bg-gray-100 ${selectedCampaignId === campaign.id ? "bg-blue-50 text-blue-600" : ""}`}
                     >
-                      {campaign.id}: {campaign.campaign?.campaign_strategy?.campaign_name || 'Unnamed Campaign'}
+                      {campaign.id}:{" "}
+                      {campaign.campaign?.campaign_strategy?.campaign_name ||
+                        "Unnamed Campaign"}
                     </div>
                   ))}
                 </div>
               )}
-              
+
               {showHistoryDropdown && allCampaigns.length === 0 && (
                 <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg">
-                  <div className="px-4 py-2 text-sm text-gray-500">No campaigns found</div>
+                  <div className="px-4 py-2 text-sm text-gray-500">
+                    No campaigns found
+                  </div>
                 </div>
               )}
             </div>
-            
+
             <LabeledInput
               label="Company Name"
               name="companyName"
@@ -379,12 +399,12 @@ export default function EmailGenerationAI() {
               type="select"
               options={ToneAndStyleOptions}
             />
-            <button 
-              className={`mt-12 w-full py-2 text-white font-medium cursor-pointer rounded-md bg-gradient-to-r from-[#02B4FE] to-[#0964F8] hover:opacity-90 transition ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+            <button
+              className={`mt-12 w-full py-2 text-white font-medium cursor-pointer rounded-md bg-gradient-to-r from-[#02B4FE] to-[#0964F8] hover:opacity-90 transition ${submitting ? "opacity-50 cursor-not-allowed" : ""}`}
               onClick={handleSubmit}
               disabled={submitting}
             >
-              {submitting ? 'Generating...' : 'Continue'}
+              {submitting ? "Generating..." : "Continue"}
             </button>
           </div>
         </div>

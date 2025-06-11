@@ -9,6 +9,7 @@ import ScheduleForm from "./ScheduleForm";
 import CalendarResult from "./CalenderResult";
 import { toast } from "react-toastify";
 import { defaultCategories } from "../../../libs/utils";
+import LabeledInput from "../ui/InputFields/ LabeledInput";
 
 const platforms = [
   { name: "LinkedIn", icon: linkedin },
@@ -30,6 +31,7 @@ export default function ContentCreationAI() {
   const [postData, setPostData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [companies, setCompanies] = useState([]);
+  const [campaignName, setCampaignName] = useState("");
 
   const addCategory = () => {
     if (newCategory.trim() === "") return;
@@ -56,7 +58,7 @@ export default function ContentCreationAI() {
         return;
       }
       const res = await fetch(
-        `http://10.229.220.15:8000/get-user-posts?user_id=${userId}`
+        `https://dev-ai.cybergen.com/get-user-posts?user_id=${userId}`
       );
       if (!res.ok) throw new Error("Failed to fetch posts");
       const data = await res.json();
@@ -76,16 +78,13 @@ export default function ContentCreationAI() {
   useEffect(() => {
     async function loadCompanies() {
       try {
-        const res = await fetch("http://10.229.220.15:8000/Get-company-list", {
+        const res = await fetch("https://dev-ai.cybergen.com/Get-company-list", {
           headers: { accept: "application/json" },
         });
         if (!res.ok) throw new Error(res.statusText);
         const data = await res.json();
         setCompanies(data);
-        console.log("Loaded companies:", data);
         if (data.length) setClient(data[0]);
-
-        console.log(client);
       } catch (err) {
         console.error("Failed loading companies:", err);
         toast.error("Could not load clients.");
@@ -102,9 +101,7 @@ export default function ContentCreationAI() {
         </h2>
       </div>
       <div className="flex flex-col md:flex-row gap-4 py-2">
-        {/* Left Panel */}
         <div className="w-full md:w-[40%] bg-white rounded-xl p-4">
-          {/* Tabs */}
           <div className="flex border-b border-[#E2E8F0]">
             {["Content", "Schedule"].map((tab) => (
               <button
@@ -150,7 +147,13 @@ export default function ContentCreationAI() {
                   </div>
                 </div>
               </div>
-
+              <LabeledInput
+                label="Campaign Name"
+                name="campaignName"
+                placeholder="Enter campaign name here....."
+                value={campaignName}
+                onChange={(e) => setCampaignName(e.target.value)}
+              />
               {/* Select Platform */}
               <div>
                 <h3 className="text-sm font-semibold text-gray-700 mb-1">
@@ -267,6 +270,7 @@ export default function ContentCreationAI() {
               postType={postType}
               category={selectedCategory}
               onGenerateSuccess={fetchPosts}
+              campaignName={campaignName}
             />
           )}
         </div>
