@@ -182,7 +182,15 @@ export default function CalendarResult({
     }
   }, [companyName]);
 
-  function transformApiEmailToPost(apiEmail, campaignStartDate, emailIndex, campaignObjective, targetAudience, clientNameFromCampaign) {
+  function transformApiEmailToPost(
+    apiEmail, 
+    campaignStartDate, 
+    emailIndex, 
+    campaignObjective, 
+    targetAudience, 
+    clientNameFromCampaign,
+    campaignId
+  ) {
     let postDate;
     const { timing } = apiEmail; 
     const effectiveCampaignStartDate = campaignStartDate || new Date(); // Base for "Day X" or ultimate fallback
@@ -235,7 +243,7 @@ export default function CalendarResult({
     postDate.setHours(0, 0, 0, 0);
 
     return {
-      id: `new-email-${apiEmail.email_number || emailIndex}-${Date.now()}`,
+      id: `campaign-${campaignId}-email-${apiEmail.email_number || emailIndex}`,
       post_date: postDate.toISOString(),
       caption: apiEmail.subject_line || apiEmail.tag || 'Untitled Email',
       platform: 'Email',
@@ -245,7 +253,10 @@ export default function CalendarResult({
       originalApiData: apiEmail,
       campaign_objective: campaignObjective,
       target_audience: targetAudience,
-      client_name: clientNameFromCampaign || companyName || apiEmail.client_name || apiEmail.clientName || 'DefaultClient', 
+      client_name: clientNameFromCampaign || companyName || apiEmail.client_name || apiEmail.clientName || 'DefaultClient',
+      
+      campaign_id: campaignId,
+      email_number: apiEmail.email_number,
     };
   }
   
@@ -257,6 +268,7 @@ export default function CalendarResult({
       const campaignStartDateFromEffect = new Date();
       
       const { campaign_objective, target_audience } = newlyGeneratedCampaign.campaign_strategy;
+      const campaignId = newlyGeneratedCampaign.id;
       
       let clientNameForEmails = companyName;
       
@@ -275,7 +287,8 @@ export default function CalendarResult({
           index, 
           campaign_objective, 
           target_audience, 
-          clientNameForEmails
+          clientNameForEmails,
+          campaignId
         )
       );
 
@@ -366,7 +379,11 @@ export default function CalendarResult({
         target_audience: targetAudienceToUse || originalPost.target_audience,
         client_name: clientNameFromResponse, 
         
-        originalApiData: newEmailApiData, 
+        campaign_id: originalPost.campaign_id,
+        email_number: originalPost.email_number,
+
+        originalApiData: newEmailApiData, // Store the full raw response for reference
+        // Preserve any timing information from original post, as the slot in calendar is fixed
         timing: originalPost.timing, 
       };
 

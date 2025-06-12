@@ -89,6 +89,8 @@ export default function MonthlyPostResults({ posts = [], onPostCreated }) {
                       </p>
                       <div className="flex justify-between items-start gap-2 bg-white border border-[#E2E8F0] font-medium rounded-lg px-4 py-3 text-[#344054] text-sm">
                         <p className="leading-snug">{post.caption}</p>
+                               
+
                       </div>
                       <button
                         onClick={() => handleRegenerate(post)}
