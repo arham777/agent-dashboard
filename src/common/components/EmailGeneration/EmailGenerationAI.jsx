@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import CalendarResult from "./CalenderResult";
 import { toast } from "react-toastify";
-import LabeledInput from "../ui/InputFields/ LabeledInput";
+import LabeledInput from "../ui/InputFields/LabeledInput";
 import { IoChevronDownOutline } from "react-icons/io5";
 
 export default function EmailGenerationAI() {
