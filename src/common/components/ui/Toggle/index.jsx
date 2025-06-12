@@ -9,6 +9,41 @@ import { toast } from "react-toastify";
 import { BiData } from "react-icons/bi";
 import { defaultCategories } from "../../../../libs/utils";
 
+const FormatPostContent = ({ text }) => {
+  if (!text || typeof text !== "string" || !text.includes("**Slide")) {
+    return <span>{text || "Not available"}</span>;
+  }
+
+  const cleanedText = text.replace(/^.*?:/, "").trim();
+
+  const slides = cleanedText.split(/\s*\*\*Slide\s*/).filter((s) => s.trim());
+
+  if (slides.length <= 1 && cleanedText.includes("**Slide 1:**")) {
+    return <span>{cleanedText}</span>;
+  }
+
+  return (
+    <ul className="list-none space-y-2 mt-1 text-sm">
+      {slides.map((slide, index) => {
+        const [title, ...descriptionParts] = slide.split(":**");
+        if (!title) return null; 
+
+        const description = descriptionParts
+          .join(":**")
+          .trim()
+          .replace(/^"|"$/g, "");
+
+        return (
+          <li key={index} className="flex flex-col">
+            <strong className="text-gray-800">Slide {title}:</strong>
+            <span className="pl-2 text-gray-600">{description}</span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+};
+
 export default function AuthModal({
   onClose,
   scheduledPosts = [],
@@ -42,6 +77,7 @@ export default function AuthModal({
     day: "2-digit",
     year: "numeric",
   });
+
   useEffect(() => {
     const fetchCampaigns = async () => {
       const storedUser = localStorage.getItem("authenticatedUser");
@@ -71,6 +107,7 @@ export default function AuthModal({
 
     fetchCampaigns();
   }, []);
+
   const handleGenerate = async () => {
     setLoading(true);
     const storedUser = localStorage.getItem("authenticatedUser");
@@ -139,7 +176,6 @@ export default function AuthModal({
       return;
     }
 
-   
     try {
       const input =
         `caption : "${post.caption}" ` +
@@ -175,7 +211,7 @@ export default function AuthModal({
   };
   return (
     <div className="fixed inset-0 z-50 flex justify-center items-center bg-black/40 px-4">
-      <div className="  w-full lg:w-[40%] bg-white rounded-lg shadow-xl overflow-hidden relative">
+      <div className="w-full lg:w-[40%] bg-white rounded-lg shadow-xl overflow-hidden relative">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 cursor-pointer"
@@ -198,11 +234,11 @@ export default function AuthModal({
 
         <div className="px-6 py-4 text-center">
           <h2 className="text-xl font-bold">{formattedDate}</h2>
-          <div className="flex  mt-2 ">
+          <div className="flex mt-2 ">
             {["Scheduled Post", "New post"].map((tab) => (
               <button
                 key={tab}
-                className={`w-full  cursor-pointer px-4 py-1.5  text-sm font-medium ${
+                className={`w-full cursor-pointer px-4 py-1.5 text-sm font-medium ${
                   activeTab === tab
                     ? "bg-[#2563EB] text-white "
                     : "border border-[#D0D5DD] text-[#0771EF]"
@@ -225,7 +261,7 @@ export default function AuthModal({
               scheduledPosts.map((post, i) => (
                 <div
                   key={i}
-                  className="border border-gray-200 rounded-lg p-4 flex flex-col space-y-2"
+                  className="border border-gray-200 rounded-lg p-4 flex flex-col space-y-3"
                 >
                   <div className="flex flex-col gap-2 text-sm text-[#344054]">
                     <div className="flex gap-2">
@@ -252,8 +288,21 @@ export default function AuthModal({
                         );
                       })}
                     </div>
-                    <span>{post.caption}</span>
-                    <span>{post.slide}</span>
+                    <div>
+                      <strong>Caption:</strong> {post.caption}
+                    </div>
+                       <div>
+                      <strong>Post Type:</strong> {post.post_type}
+                    </div>
+                    <div>
+                      <strong className="block">Image Guidelines:</strong>
+                      <FormatPostContent text={post.image_guidelines} />
+                    </div>
+
+                    <div>
+                      <strong className="block">Image Content:</strong>
+                      <FormatPostContent text={post.image_content} />
+                    </div>
                   </div>
                   <button
                     onClick={() => handleRegenerateScheduled(post)}
@@ -368,8 +417,8 @@ export default function AuthModal({
                         key={i}
                         onClick={() => setSelectedCategory(cat.label)}
                         className={`flex items-center gap-2 text-sm font-medium rounded-xl px-3 py-1 cursor-pointer transition-colors duration-200 
-        ${isSelected ? ` ${cat.color}` : `text-[#46484B] `}
-      `}
+     ${isSelected ? ` ${cat.color}` : `text-[#46484B] `}
+     `}
                       >
                         <span
                           className={`w-2 h-2 rounded-full ${isSelected ? cat.dot : cat.dot}`}
@@ -431,7 +480,7 @@ export default function AuthModal({
                 onClick={handleGenerate}
                 disabled={loading}
                 className={`cursor-pointer px-4 py-2 rounded-md text-sm text-white bg-gradient-to-r from-[#02B4FE] to-[#0964F8] transition
-    ${loading ? "opacity-70 cursor-not-allowed" : "hover:opacity-90"}`}
+     ${loading ? "opacity-70 cursor-not-allowed" : "hover:opacity-90"}`}
               >
                 {loading ? (
                   <div className="flex items-center gap-2 justify-center">

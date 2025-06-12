@@ -23,7 +23,7 @@ export default function CalendarResult({
   // State for the component's own data and loading status
   const [postData, setPostData] = useState(initialPostData);
   const [loading, setLoading] = useState(initialLoading);
-  
+
   // State for campaign filter
   const [campaigns, setCampaigns] = useState([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState(""); // "" means "All Campaigns"
@@ -43,7 +43,9 @@ export default function CalendarResult({
         );
         if (!res.ok) throw new Error("Failed to fetch campaigns");
         const data = await res.json();
-        const validCampaigns = data.filter(c => c.campaign_name && c.campaign_name.trim() !== "");
+        const validCampaigns = data.filter(
+          (c) => c.campaign_name && c.campaign_name.trim() !== ""
+        );
         setCampaigns(validCampaigns);
       } catch (err) {
         console.error("Failed to load campaigns for filter:", err);
@@ -65,7 +67,7 @@ export default function CalendarResult({
         setLoading(false);
         return;
       }
-      
+
       let url = "";
 
       if (selectedCampaignId) {
@@ -78,7 +80,8 @@ export default function CalendarResult({
 
       try {
         const res = await fetch(url);
-        if (!res.ok) throw new Error("Failed to fetch post data for the selection");
+        if (!res.ok)
+          throw new Error("Failed to fetch post data for the selection");
         const data = await res.json();
         setPostData(data);
       } catch (err) {
@@ -91,8 +94,7 @@ export default function CalendarResult({
     };
 
     loadPostsForSelection();
-  }, [selectedCampaignId]); // This effect is triggered whenever the dropdown value changes
-
+  }, [selectedCampaignId]);
   const monthYearLabel = currentDate.toLocaleString("default", {
     month: "long",
     year: "numeric",
@@ -109,9 +111,7 @@ export default function CalendarResult({
     next.setMonth(next.getMonth() + 1);
     setCurrentDate(next);
   };
-  
-  // The rest of your rendering logic can now stay the same,
-  // as it correctly reads from the `postData` state.
+
   const currentMonthPosts = postData.filter((post) => {
     const postDate = new Date(post.post_date);
     return (
@@ -140,11 +140,18 @@ export default function CalendarResult({
           >
             {entry.platforms.map((p, i) => {
               const icon =
-                p.toLowerCase() === "twitter" ? twitter :
-                p.toLowerCase() === "instagram" ? instagram :
-                p.toLowerCase() === "facebook" ? facebook :
-                p.toLowerCase() === "linkedin" ? linkedin : null;
-              return icon && <img key={i} src={icon} alt={p} className="w-3 h-3" />;
+                p.toLowerCase() === "twitter"
+                  ? twitter
+                  : p.toLowerCase() === "instagram"
+                    ? instagram
+                    : p.toLowerCase() === "facebook"
+                      ? facebook
+                      : p.toLowerCase() === "linkedin"
+                        ? linkedin
+                        : null;
+              return (
+                icon && <img key={i} src={icon} alt={p} className="w-3 h-3" />
+              );
             })}
             <span className="truncate">{entry.caption}</span>
           </div>
@@ -163,70 +170,115 @@ export default function CalendarResult({
 
   return (
     <div className="bg-white p-6 rounded-lg h-full">
-        {/* Header */}
+      {/* Header */}
       <div className=" align-items-center flex flex-row  border-b border-gray-200 pb-2">
         <h2 className=" w-full text-2xl  font-bold text-[#1E293B]">Result</h2>
         <div className="items-center justify-end  w-full flex  gap-2">
           {/* Campaign Filter Dropdown */}
           <div className="relative">
-              <select
-                  value={selectedCampaignId}
-                  onChange={(e) => setSelectedCampaignId(e.target.value)}
-                  className="appearance-none text-sm text-[#475569] bg-[#FAFBFB] rounded-md px-3 pr-8 py-2 w-40 border border-gray-300"
-              >
-                  <option value="">All Campaigns</option>
-                  {campaigns.map((campaign) => (
-                      <option key={campaign.calendar_id} value={campaign.calendar_id}>
-                          {campaign.campaign_name}
-                      </option>
-                  ))}
-              </select>
+            <select
+              value={selectedCampaignId}
+              onChange={(e) => setSelectedCampaignId(e.target.value)}
+              className="appearance-none text-sm text-[#475569] bg-[#FAFBFB] rounded-md px-3 pr-8 py-2 w-40 border border-gray-300"
+            >
+              <option value="">All Campaigns</option>
+              {campaigns.map((campaign) => (
+                <option key={campaign.calendar_id} value={campaign.calendar_id}>
+                  {campaign.campaign_name}
+                </option>
+              ))}
+            </select>
           </div>
-          <button onClick={() => setViewMode("calendar")} className={`p-2 rounded-md bg-[#FAFBFB] cursor-pointer`}>
-              <MdOutlineCalendarToday className={`w-[16px] h-[16px] ${viewMode === "calendar" ? "text-[#0771EF]" : "text-[#64748B]"} `}/>
+          <button
+            onClick={() => setViewMode("calendar")}
+            className={`p-2 rounded-md bg-[#FAFBFB] cursor-pointer`}
+          >
+            <MdOutlineCalendarToday
+              className={`w-[16px] h-[16px] ${viewMode === "calendar" ? "text-[#0771EF]" : "text-[#64748B]"} `}
+            />
           </button>
-          <button onClick={() => setViewMode("list")} className={`p-2 rounded-md bg-[#FAFBFB] cursor-pointer`}>
-              <PiList className={`w-[16px] h-[16px] ${viewMode === "list" ? "text-[#0771EF]" : "text-[#64748B]"} `}/>
+          <button
+            onClick={() => setViewMode("list")}
+            className={`p-2 rounded-md bg-[#FAFBFB] cursor-pointer`}
+          >
+            <PiList
+              className={`w-[16px] h-[16px] ${viewMode === "list" ? "text-[#0771EF]" : "text-[#64748B]"} `}
+            />
           </button>
           <button className="px-4 py-1.5 rounded-md text-white font-medium bg-gradient-to-r from-[#02B4FE] to-[#0964F8]">
-              Export
+            Export
           </button>
         </div>
       </div>
-      
+
       {/* Calendar/List View */}
       {viewMode === "calendar" ? (
         <>
-        {/* Month Navigation */}
+          {/* Month Navigation */}
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-[#0F172A]">
               {monthYearLabel}
             </h3>
             <div className="flex items-center justify-between text-sm font-medium text-[#0F172A] py-2 gap-2">
               <div className="flex items-center gap-1">
-                <button onClick={goToPreviousMonth} className="px-2 py-1 rounded-full bg-gray-100 cursor-pointer">←</button>
+                <button
+                  onClick={goToPreviousMonth}
+                  className="px-2 py-1 rounded-full bg-gray-100 cursor-pointer"
+                >
+                  ←
+                </button>
                 <span>{monthYearLabel}</span>
-                <button onClick={goToNextMonth} className="px-2 py-1 rounded-full bg-gray-100 cursor-pointer">→</button>
+                <button
+                  onClick={goToNextMonth}
+                  className="px-2 py-1 rounded-full bg-gray-100 cursor-pointer"
+                >
+                  →
+                </button>
               </div>
             </div>
           </div>
-        {/* Calendar Grid */}
+          {/* Calendar Grid */}
           <div className="grid grid-cols-7 gap-2">
-            {daysOfWeek.map((day) => (<div key={day} className="text-center text-sm font-semibold text-[#3B82F6]">{day}</div>))}
-            {[...Array(35)].map((_, i) => { // This is a simplified grid, needs proper date logic
+            {daysOfWeek.map((day) => (
+              <div
+                key={day}
+                className="text-center text-sm font-semibold text-[#3B82F6]"
+              >
+                {day}
+              </div>
+            ))}
+            {[...Array(35)].map((_, i) => {
+              // This is a simplified grid, needs proper date logic
               const day = i + 1; // Placeholder for day number
-              const inMonth = day > 0 && day <= new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+              const inMonth =
+                day > 0 &&
+                day <=
+                  new Date(
+                    currentDate.getFullYear(),
+                    currentDate.getMonth() + 1,
+                    0
+                  ).getDate();
               const hasData = !!postMap[day];
               return (
-                <div key={i} onClick={() => { if (hasData) {
-                    const fullDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
-                    setSelectedDayPosts(postMap[day]);
-                    setSelectedDate(fullDate);
-                    setIsAuthModalOpen(true);
-                  }}}
+                <div
+                  key={i}
+                  onClick={() => {
+                    if (hasData) {
+                      const fullDate = new Date(
+                        currentDate.getFullYear(),
+                        currentDate.getMonth(),
+                        day
+                      );
+                      setSelectedDayPosts(postMap[day]);
+                      setSelectedDate(fullDate);
+                      setIsAuthModalOpen(true);
+                    }
+                  }}
                   className={`min-h-[80px] rounded-lg p-1 text-[12px] text-[#0F172A] cursor-pointer ${hasData ? "border-2 border-[#3B82F6]" : "border border-[#E2E8F0]"}`}
                 >
-                  <div className="font-medium text-right pr-1 text-xs">{inMonth ? day : ""}</div>
+                  <div className="font-medium text-right pr-1 text-xs">
+                    {inMonth ? day : ""}
+                  </div>
                   {inMonth && renderCell(day)}
                 </div>
               );
@@ -234,7 +286,7 @@ export default function CalendarResult({
           </div>
         </>
       ) : (
-        <MonthlyPostResults posts={postData} onPostCreated={onPostCreated}/>
+        <MonthlyPostResults posts={postData} onPostCreated={onPostCreated} />
       )}
       {isAuthModalOpen && (
         <AuthModal
@@ -244,7 +296,7 @@ export default function CalendarResult({
           onPostCreated={() => {
             setIsAuthModalOpen(false);
             const currentSelection = selectedCampaignId;
-            setSelectedCampaignId('');
+            setSelectedCampaignId("");
             setTimeout(() => setSelectedCampaignId(currentSelection), 0);
             onPostCreated();
           }}

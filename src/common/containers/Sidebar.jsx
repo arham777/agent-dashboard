@@ -50,10 +50,10 @@ const SidebarItem = ({ icon: Icon, label, to, badge, expanded }) => {
 const Sidebar = ({ toggleSidebar, expanded }) => {
   const sidebarItems = [
     { icon: Home, label: "Dashboard", to: "/" },
-    { icon: FileText, label: "Content Creation", to: "/content" },
-    { icon: Mails, label: "Email Generator", to: "/email-generator" },
-    { icon: DollarSign, label: "Financial Generator", to: "/financial-generator" },
-    { icon: UserCog, label: "HR Agent", to: "/hr-agent" },
+    { icon: FileText, label: "Social Media Calendar", to: "/content" },
+    { icon: Mails, label: "Email Journey", to: "/email-generator" },
+    { icon: DollarSign, label: "Market Analysis", to: "/financial-generator" },
+    { icon: UserCog, label: "Blog Writer", to: "/hr-agent" },
     { icon: Megaphone, label: "Marketing AI Agent", to: "/marketing" },
     { icon: CalendarCheck2, label: "Grant Writer", to: "/grants" },
     { icon: CalendarDays, label: "Client Management", to: "/clients" },

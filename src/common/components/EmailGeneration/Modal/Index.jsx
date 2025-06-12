@@ -46,9 +46,9 @@ export default function MailSchedulerModal({
   onEmailRecomposed,
   userId,
   clientName,
-  submittedApiContentFocus
 }) {
   const [selectedTab, setSelectedTab] = useState("scheduled"); 
+  const [isRegenerating, setIsRegenerating] = useState(false);
   
   const [campaignObjective, setCampaignObjective] = useState("Product Promotion");
   const [targetAudience, setTargetAudience] = useState("");
@@ -57,14 +57,7 @@ export default function MailSchedulerModal({
 
   const displayScheduledEmail = scheduledEmailsForDate.length > 0
     ? scheduledEmailsForDate[0]
-    : { 
-        id: null,
-        type: 'Initial Mail',
-        subject: 'Master UI/UX Design — Free Online Workshop This Month!',
-        body: `Hi [First Name],\n\nAre you ready to level up your design skills?\n\nWe're excited to invite you to our Free Online UI/UX Design Workshop, where you'll learn the essentials of:\n\n✅ Design thinking\n✅ Wireframing techniques\n✅ Prototyping tools\n✅ Building design systems (Components & Variants in Figma)\n\n📅 Date: [Insert Date]\n⏰ Time: [Insert Time]\n📍 Platform: Zoom (Link after registration)\n\n⭐ Bonus: Participants will receive access to our design template pack!`,
-        platforms: ['Email'],
-        caption: 'Dummy scheduled email caption',
-      };
+    : null;
 
   useEffect(() => {
     if (selectedTab === "compose") {
@@ -103,18 +96,13 @@ export default function MailSchedulerModal({
     
     const apiUrl = `https://dev-ai.cybergen.com/generate-single-email?${queryParams.toString()}`;
 
-    // console.log("Payload for email generation:", payload); // Old log for body payload
     console.log("Sending request to generate-single-email with query params:", queryParams.toString());
     console.log("Full API URL:", apiUrl);
 
     try {
-      // console.log("Sending request to generate-single-email..."); // Old log
-      const response = await fetch(apiUrl, { // apiUrl now includes query params
+      const response = await fetch(apiUrl, { 
         method: 'POST',
-        // headers: {
-        //   'Content-Type': 'application/json', // Not needed if no body
-        // },
-        // body: JSON.stringify(payload), // Parameters are now in the URL
+  
       });
 
       if (!response.ok) {
@@ -123,7 +111,6 @@ export default function MailSchedulerModal({
           const errorData = await response.json();
           errorMessage = errorData.message || errorData.detail || `HTTP error! status: ${response.status}`;
         } catch (parseError) {
-          // If JSON parsing fails, use status text
           errorMessage = `HTTP error! status: ${response.status} ${response.statusText}`;
           console.log("Error parsing JSON response:", parseError);
         }
@@ -146,9 +133,58 @@ export default function MailSchedulerModal({
 
     } catch (error) {
       console.error("Failed to generate email:", error);
-      // You could add a toast notification here if you have a toast library
     } finally {
       setIsComposing(false);
+    }
+  };
+
+  const handleRegenerateEmail = async () => {
+    if (!displayScheduledEmail) {
+      alert("Error: No email data available to regenerate.");
+      console.error("Cannot regenerate: displayScheduledEmail is null or undefined.");
+      return;
+    }
+
+    const campaignId = displayScheduledEmail.campaign_id;
+    const emailNumber = displayScheduledEmail.email_number;
+    const emailUniqueId = displayScheduledEmail.id; 
+
+    if (campaignId === undefined || emailNumber === undefined) {
+      alert("Error: Missing campaign ID or email sequence number. Cannot regenerate.");
+      console.error("Regeneration failed: Missing data from email object", { 
+        "campaign_id": campaignId, 
+        "email_number": emailNumber 
+      });
+      return;
+    }
+
+    setIsRegenerating(true);
+    try {
+      const apiUrl = `https://dev-ai.cybergen.com/Re-Generate-Email-?id=${campaignId}&email_id=${emailNumber}`;
+      console.log("Making API call to regenerate email:", apiUrl);
+      
+      const response = await fetch(apiUrl, { method: 'GET' });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const newEmailData = await response.json(); 
+      console.log("Successfully regenerated email, response:", newEmailData);
+
+      if (onEmailRecomposed) {
+        onEmailRecomposed(emailUniqueId, newEmailData);
+      } else {
+        console.error("onEmailRecomposed callback is not available to update the UI.");
+      }
+      
+      onClose();
+
+    } catch (error) {
+      console.error("Failed to regenerate email:", error);
+      alert(`Error: ${error.message}`);
+    } finally {
+      setIsRegenerating(false);
     }
   };
 
@@ -272,30 +308,64 @@ export default function MailSchedulerModal({
                 </div>
 
                 {selectedTab === "scheduled" && (
-                  <div className="space-y-4 px-2">
-                    <span className="inline-block border border-[#007BFF] text-[#007BFF] text-sm font-semibold px-2.5 py-1.5 rounded-full">
-                      <span className="text-md">•</span> {formatTagLabel(displayScheduledEmail.type)}
-                    </span>
-                  <div className="border p-3 rounded-sm border-gray-200">
-                    <div>
-                      <p className="font-semibold text-[#344054] mb-3 text-sm">Subject Line:</p>
-                      <p className="text-base text-sm mb-3 text-[#344054]">
-                        {displayScheduledEmail.subject}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="font-semibold text-[#344054] mb-3 text-sm">Email Body:</p>
-                      <div className="mt-1 space-y-1 text-[#344054]">
-                        {renderEmailBodyContent(displayScheduledEmail.body)}
+                  displayScheduledEmail ? (
+                    <div className="space-y-4 px-2">
+                      <div className="flex items-center gap-4 flex-wrap">
+                        <span className="inline-block border border-[#007BFF] text-[#007BFF] text-sm font-semibold px-2.5 py-1.5 rounded-full">
+                          <span className="text-md">•</span> {formatTagLabel(displayScheduledEmail.type)}
+                        </span>
+                        {typeof displayScheduledEmail.campaign_id !== 'undefined' && (
+                          <span className="text-sm font-semibold text-gray-700">
+                            Campaign: {displayScheduledEmail.campaign_id}
+                          </span>
+                        )}
+                        {typeof displayScheduledEmail.email_number !== 'undefined' && (
+                          <span className="text-sm font-semibold text-gray-700">
+                            Email: #{displayScheduledEmail.email_number}
+                          </span>
+                        )}
                       </div>
-                    </div>
-                    </div>
+                    <div className="border p-3 mt-4 rounded-sm border-gray-200">
+                      <div>
+                        <p className="font-semibold text-[#344054] mb-3 text-sm">Subject Line:</p>
+                        <p className="text-base text-sm mb-3 text-[#344054]">
+                          {displayScheduledEmail.subject}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-[#344054] mb-3 text-sm">Email Body:</p>
+                        <div className="mt-1 space-y-1 text-[#344054]">
+                          {renderEmailBodyContent(displayScheduledEmail.body)}
+                        </div>
+                      </div>
+                      </div>
 
-                      <button className="px-6 w-full  py-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition duration-200 flex justify-center items-center gap-2">
-                        <RegenerateIcon />
-                        Regenerate
-                      </button>
-                  </div>
+                        <button 
+                          onClick={handleRegenerateEmail}
+                          disabled={isRegenerating}
+                          className="px-6 w-full py-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition duration-200 flex justify-center items-center gap-2 disabled:opacity-50"
+                        >
+                          {isRegenerating ? (
+                            <span className="flex items-center justify-center">
+                              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Regenerating...
+                            </span>
+                          ) : (
+                            <>
+                              <RegenerateIcon />
+                              Regenerate
+                            </>
+                          )}
+                        </button>
+                    </div>
+                  ) : (
+                    <div className="text-center py-10">
+                      <p className="text-gray-500">No email scheduled for this date.</p>
+                    </div>
+                  )
                 )}
 
                 {selectedTab === "compose" && (
