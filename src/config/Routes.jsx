@@ -5,6 +5,7 @@ const ContentCreation = React.lazy(() => import("../Pages/ContentCreation"));
 const EmailGeneration = React.lazy(() => import("../Pages/EmailGeneration"));
 const FinancialGenerator = React.lazy(() => import("../Pages/FinancialGenerator"));
 const Auth = React.lazy(() => import("../Pages/Auth/index"));
+const BlogWriter = React.lazy(() => import("../Pages/BlogWriter"));
 
 // const ContactUs = React.lazy(() => import('../pages/Contact'));
 // const AboutUs = React.lazy(() => import('../pages/About'));
@@ -21,6 +22,7 @@ const Auth = React.lazy(() => import("../Pages/Auth/index"));
 export const R_Home = "/";
 export const R_Content_Creation = "/content";
 export const R_Email_Generation = "/email-generator";
+export const R_Blog_Writer = "/blog-writer";
 export const R_Financial_Generator = "/financial-generator";
 export const R_auth = "/auth/:id";
 
@@ -55,6 +57,12 @@ export const PublicRoutes = [
     title: "Financial Generator Page",
     path: R_Financial_Generator,
     component: FinancialGenerator,
+  },
+  {
+    key: "blog_writer",
+    title: "Blog Writer Page",
+    path: R_Blog_Writer,
+    component: BlogWriter,
   },
   {
     key: "home",

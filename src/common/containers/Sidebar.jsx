@@ -53,7 +53,7 @@ const Sidebar = ({ toggleSidebar, expanded }) => {
     { icon: FileText, label: "Social Media Calendar", to: "/content" },
     { icon: Mails, label: "Email Journey", to: "/email-generator" },
     { icon: DollarSign, label: "Market Analysis", to: "/financial-generator" },
-    { icon: UserCog, label: "Blog Writer", to: "/hr-agent" },
+    { icon: UserCog, label: "Blog Writer", to: "/blog-writer" },
     { icon: Megaphone, label: "Marketing AI Agent", to: "/marketing" },
     { icon: CalendarCheck2, label: "Grant Writer", to: "/grants" },
     { icon: CalendarDays, label: "Client Management", to: "/clients" },

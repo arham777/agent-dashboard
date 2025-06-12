@@ -9,7 +9,7 @@ import ScheduleForm from "./ScheduleForm";
 import CalendarResult from "./CalenderResult";
 import { toast } from "react-toastify";
 import { defaultCategories } from "../../../libs/utils";
-import LabeledInput from "../ui/InputFields/ LabeledInput";
+import LabeledInput from "../ui/InputFields/LabeledInput";
 
 const platforms = [
   { name: "LinkedIn", icon: linkedin },
