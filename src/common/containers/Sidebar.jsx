@@ -54,6 +54,7 @@ const Sidebar = ({ toggleSidebar, expanded }) => {
     { icon: Mails, label: "Email Journey", to: "/email-generator" },
     { icon: DollarSign, label: "Market Analysis", to: "/financial-generator" },
     { icon: UserCog, label: "Blog Writer", to: "/blog-writer" },
+    { icon: FileText, label: "Prompt Generator", to: "/prompt-generator" },
     { icon: Megaphone, label: "Marketing AI Agent", to: "/marketing" },
     { icon: CalendarCheck2, label: "Grant Writer", to: "/grants" },
     { icon: CalendarDays, label: "Client Management", to: "/clients" },
