@@ -96,17 +96,17 @@ const PromptCreator = () => {
   };
 
   const generatePrompt = async () => {
-    if (!apiKey.trim()) {
-            toast({ title: "OpenAI API Key required", description: "Please set up your OpenAI API key first.", variant: "destructive" });
+    if (!apiKey) {
+      toast({ title: "OpenAI API Key not configured", description: "The API key is not configured in the environment. Please contact the administrator.", variant: "destructive" });
       return;
     }
-        if (!promptCreatorData.appName || !promptCreatorData.purpose) {
-            toast({ title: "Missing required fields", description: "Please fill in the App Name and Purpose.", variant: "destructive" });
+    if (!promptCreatorData.appName || !promptCreatorData.purpose) {
+      toast({ title: "Missing required fields", description: "Please fill in the App Name and Purpose.", variant: "destructive" });
       return;
     }
 
     setIsGenerating(true);
-        setGeneratedPrompt('');
+    setGeneratedPrompt('');
     try {
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',

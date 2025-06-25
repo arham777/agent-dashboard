@@ -20,7 +20,6 @@ export interface PromptCreatorData {
 
 interface AppContextType {
   apiKey: string;
-  setApiKey: (key: string) => void;
   codeAnalyzerData: CodeAnalyzerData;
   setCodeAnalyzerData: (data: CodeAnalyzerData) => void;
   promptCreatorData: PromptCreatorData;
@@ -30,12 +29,8 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
-  // API Key state
-  const [apiKey, setApiKey] = useState(() => {
-    // Load from localStorage on initial render
-    const savedKey = localStorage.getItem('openai_api_key');
-    return savedKey || '';
-  });
+  // API Key from environment variable
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY || '';
 
   // CodeAnalyzer state
   const [codeAnalyzerData, setCodeAnalyzerData] = useState<CodeAnalyzerData>(() => {
@@ -61,10 +56,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   // Save to localStorage whenever data changes
   useEffect(() => {
-    localStorage.setItem('openai_api_key', apiKey);
-  }, [apiKey]);
-
-  useEffect(() => {
     localStorage.setItem('code_analyzer_data', JSON.stringify(codeAnalyzerData));
   }, [codeAnalyzerData]);
 
@@ -75,7 +66,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AppContext.Provider value={{ 
       apiKey, 
-      setApiKey, 
       codeAnalyzerData, 
       setCodeAnalyzerData,
       promptCreatorData,
@@ -97,6 +87,6 @@ export const useAppContext = () => {
 // For backward compatibility
 export const ApiKeyProvider = AppProvider;
 export const useApiKey = () => {
-  const { apiKey, setApiKey } = useAppContext();
-  return { apiKey, setApiKey };
+  const { apiKey } = useAppContext();
+  return { apiKey };
 };

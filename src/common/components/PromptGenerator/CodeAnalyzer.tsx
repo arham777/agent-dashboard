@@ -44,8 +44,9 @@ const CodeAnalyzer = () => {
       toast({ title: "No code provided", description: "Please paste some code to analyze.", variant: "destructive" });
       return;
     }
-    if (!apiKey.trim()) {
-      toast({ title: "OpenAI API Key required", description: "Please set up your OpenAI API key first.", variant: "destructive" });
+    
+    if (!apiKey) {
+      toast({ title: "OpenAI API Key not configured", description: "The API key is not configured in the environment. Please contact the administrator.", variant: "destructive" });
       return;
     }
 
